@@ -257,8 +257,17 @@ input,textarea,select{font-family:inherit}
 .cl-head{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .cl-head h3{font-size:16px;font-weight:600}
 .cl-body{flex:1;overflow-y:auto;padding:16px 24px}
-.cl-entry{padding:14px 0;border-bottom:1px solid var(--border)}
+.cl-entry{padding:14px 0;border-bottom:1px solid var(--border);border-radius:var(--rsm)}
 .cl-entry:last-child{border-bottom:none}
+.cl-entry.clickable{cursor:pointer;transition:background .12s}
+.cl-entry.clickable:hover{background:var(--bg2);padding-left:8px;padding-right:8px}
+.cl-diff-full{font-size:13.5px;line-height:1.7;padding:6px 10px;border-radius:var(--rsm);margin:3px 0;word-break:break-word;white-space:pre-wrap}
+.cl-diff-full.add{color:#15803d;background:#f0fdf4;border-left:3px solid #86efac}
+.cl-diff-full.del{color:#b91c1c;background:#fef2f2;border-left:3px solid #fca5a5;text-decoration:line-through}
+.cl-diff-label{font-size:11px;color:var(--text3);margin:4px 0 2px;font-weight:500}
+.cl-jump-hint{font-size:11px;color:var(--accent);margin-top:4px;opacity:.7}
+@keyframes blk-flash{0%{background:var(--accent-bg)}100%{background:transparent}}
+.blk-highlight{animation:blk-flash 1.5s ease-out forwards}
 .cl-entry-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .cl-time{font-size:12px;color:var(--text3);flex-shrink:0}
 .cl-doc{font-size:12px;background:var(--bg2);padding:2px 8px;border-radius:20px;color:var(--text2)}
@@ -1062,7 +1071,7 @@ function editable(tag, b, cls, ph) {
       b.content=el.innerHTML; renderOutline(); updateWordCount();
       const after = plainText(el.innerHTML);
       const d = diffText(_prevContent, after);
-      if (d) { autoLog('edit', getDoc().name, '', d); _prevContent = after; }
+      if (d) { autoLog('edit', getDoc().name, '', d, b.id); _prevContent = after; }
       else save();
     });
     el.addEventListener('keydown', e => onBlockKey(e,b,el));
@@ -1109,7 +1118,7 @@ function makeCallout(b) {
     content.addEventListener('input',()=>{
       b.content=content.innerHTML;
       const after=plainText(content.innerHTML);
-      const d=diffText(_prevCO,after); if(d){autoLog('edit',getDoc().name,'',d);_prevCO=after;}else save();
+      const d=diffText(_prevCO,after); if(d){autoLog('edit',getDoc().name,'',d,b.id);_prevCO=after;}else save();
     });
     content.addEventListener('keydown',e=>onBlockKey(e,b,content));
   } else { content.innerHTML=b.content||''; content.style.cssText='font-size:14.5px;line-height:1.7'; }
@@ -1129,7 +1138,7 @@ function makeBullet(b) {
     text.addEventListener('input',()=>{
       b.content=text.innerHTML;
       const after=plainText(text.innerHTML);
-      const d=diffText(_prevBU,after);if(d){autoLog('edit',getDoc().name,'',d);_prevBU=after;}else save();
+      const d=diffText(_prevBU,after);if(d){autoLog('edit',getDoc().name,'',d,b.id);_prevBU=after;}else save();
     });
     text.addEventListener('keydown',e=>onBlockKey(e,b,text));
   } else text.innerHTML=b.content||'';
@@ -1150,7 +1159,7 @@ function makeOrdered(b) {
       text.addEventListener('input',()=>{
         b.items[i]=text.innerHTML;
         const after=plainText(text.innerHTML);
-        const d=diffText(_prevOR,after);if(d){autoLog('edit',getDoc().name,'',d);_prevOR=after;}else save();
+        const d=diffText(_prevOR,after);if(d){autoLog('edit',getDoc().name,'',d,b.id);_prevOR=after;}else save();
       });
     } else text.innerHTML=item;
     row.appendChild(num); row.appendChild(text); wrap.appendChild(row);
@@ -1181,7 +1190,7 @@ function makeChecklist(b) {
       text.addEventListener('input',()=>{
         item.text=text.innerHTML;
         const after=plainText(text.innerHTML);
-        const d=diffText(_prevCH,after);if(d){autoLog('edit',getDoc().name,'',d);_prevCH=after;}else save();
+        const d=diffText(_prevCH,after);if(d){autoLog('edit',getDoc().name,'',d,b.id);_prevCH=after;}else save();
       });
     } else text.innerHTML=item.text||'';
     row.appendChild(chk); row.appendChild(text); wrap.appendChild(row);
@@ -1223,7 +1232,7 @@ function makeCollapse(b) {
     title.addEventListener('input', () => {
       b.label = title.innerHTML; renderOutline();
       const after=plainText(title.innerHTML);
-      const d=diffText(_prevCL,after);if(d){autoLog('edit',getDoc().name,'',d);_prevCL=after;}else save();
+      const d=diffText(_prevCL,after);if(d){autoLog('edit',getDoc().name,'',d,b.id);_prevCL=after;}else save();
     });
     title.addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -1584,7 +1593,7 @@ function makeToggleList(b) {
       text.addEventListener('input', () => {
         item.text = text.innerHTML;
         const after=plainText(text.innerHTML);
-        const d=diffText(_prevTL,after);if(d){autoLog('edit',getDoc().name,'',d);_prevTL=after;}else save();
+        const d=diffText(_prevTL,after);if(d){autoLog('edit',getDoc().name,'',d,b.id);_prevTL=after;}else save();
       });
       text.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -2116,27 +2125,31 @@ function diffText(before, after) {
 }
 
 // Core: push one auto entry
-function autoLog(action, docName, detail, diff) {
+function autoLog(action, docName, detail, diff, blockId) {
   if (!currentUser) return;
+  const curDoc = getDoc();
   const entry = {
     id: Date.now(),
     ts: Date.now(),
     userId: currentUser.id,
     userName: currentUser.name,
     userColor: currentUser.color,
-    docName: docName || getDoc().name,
+    docId: curDoc ? curDoc.id : null,
+    docName: docName || (curDoc ? curDoc.name : ''),
     action,
     detail: detail || '',
-    diff: diff || null
+    diff: diff || null,
+    blockId: blockId || null
   };
   // Merge same edit action within 10 seconds — update diff's "after"
   const last = changelog[changelog.length-1];
   if (last && last.userId===entry.userId && last.action==='edit'
       && entry.action==='edit' && last.docName===entry.docName
+      && last.blockId===entry.blockId
       && entry.ts-last.ts < 10000) {
     last.ts = entry.ts;
     if (diff && last.diff) {
-      last.diff.after = diff.after; // keep updating the latest version
+      last.diff.after = diff.after;
     } else if (diff) { last.diff = diff; }
     if (detail) last.detail = detail;
     saveChangelog(); return;
@@ -2196,21 +2209,30 @@ function renderChangelog() {
     }
     const el = document.createElement('div'); el.className = 'cl-entry';
     const col = entry.userColor || FIXED_USERS.find(x=>x.id===entry.userId)?.color || '#999';
-    // Build diff display
+    // Build diff display (full content, no truncation)
     let diffHtml = '';
     if (entry.diff) {
       const d = entry.diff;
       if (d.type === 'add') {
-        diffHtml = `<div class="cl-diff-add">+ ${escHtml(d.text.slice(0,120))}${d.text.length>120?'…':''}</div>`;
+        diffHtml = `<div class="cl-diff-label">${lang==='en'?'Added:':'新增內容：'}</div>`
+                 + `<div class="cl-diff-full add">+ ${escHtml(d.text)}</div>`;
       } else if (d.type === 'del') {
-        diffHtml = `<div class="cl-diff-del">− ${escHtml(d.text.slice(0,120))}${d.text.length>120?'…':''}</div>`;
+        diffHtml = `<div class="cl-diff-label">${lang==='en'?'Deleted:':'刪除內容：'}</div>`
+                 + `<div class="cl-diff-full del">− ${escHtml(d.text)}</div>`;
       } else if (d.type === 'edit') {
-        diffHtml = `<div class="cl-diff-del">− ${escHtml((d.before||'').slice(0,100))}${(d.before||'').length>100?'…':''}</div>`
-                 + `<div class="cl-diff-add">+ ${escHtml((d.after||'').slice(0,100))}${(d.after||'').length>100?'…':''}</div>`;
+        diffHtml = `<div class="cl-diff-label">${lang==='en'?'Before:':'修改前：'}</div>`
+                 + `<div class="cl-diff-full del">− ${escHtml(d.before||'')}</div>`
+                 + `<div class="cl-diff-label">${lang==='en'?'After:':'修改後：'}</div>`
+                 + `<div class="cl-diff-full add">+ ${escHtml(d.after||'')}</div>`;
       }
     } else if (entry.detail) {
       diffHtml = `<div class="cl-diff-info">${escHtml(entry.detail)}</div>`;
     }
+    const canJump = !!(entry.blockId);
+    if (canJump) el.classList.add('clickable');
+    const jumpHint = canJump
+      ? `<div class="cl-jump-hint">${lang==='en'?'↗ Click to jump to content':'↗ 點擊跳至該內容'}</div>`
+      : '';
     el.innerHTML = `
       <div class="cl-entry-head">
         <div class="cl-user-dot" style="background:${col}">${(entry.userName||'?')[0]}</div>
@@ -2219,9 +2241,27 @@ function renderChangelog() {
         <span class="cl-time">${formatTime(entry.ts)}</span>
       </div>
       <div class="cl-action">${clLabel(entry.action)}</div>
-      ${diffHtml}`;
+      ${diffHtml}
+      ${jumpHint}`;
+    if (canJump) el.addEventListener('click', () => jumpToBlock(entry.docId, entry.blockId));
     body.appendChild(el);
   });
+}
+
+function jumpToBlock(docId, blockId) {
+  closeChangelog();
+  if (docId && getDoc().id !== docId) {
+    const target = docs.find(d => d.id === docId);
+    if (target) switchDoc(docId);
+  }
+  if (!blockId) return;
+  setTimeout(() => {
+    const el = document.getElementById('blk-' + blockId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('blk-highlight');
+    setTimeout(() => el.classList.remove('blk-highlight'), 1600);
+  }, 150);
 }
 
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
