@@ -1811,7 +1811,7 @@ function caretEnd(el){const r=document.createRange();r.selectNodeContents(el);r.
 // ═══════════════════════════════════════════════════════════
 function startDrag(e,blockId){
   const wrap=document.getElementById('blk-'+blockId); if(!wrap)return;
-  const doc=getDoc(); const blk=doc.blocks.find(b=>b.id===blockId);
+  const doc=getDoc(); const blk=findBlock(doc.blocks,blockId)||{};
   const label=(blk.content||blk.label||blk.type||'').replace(/<[^>]+>/g,'').slice(0,50)||'…';
   const ghost=document.createElement('div'); ghost.id='dragGhost';
   ghost.textContent=label; ghost.style.left=(e.clientX+12)+'px'; ghost.style.top=(e.clientY-12)+'px';
@@ -1844,11 +1844,13 @@ function onDragEnd(){
   ghost.remove(); srcWrap.style.opacity=''; clearDragInd();
   if(!target)return;
   const tid=parseInt(target.dataset.bid); if(!tid||tid===blockId)return;
-  const doc=getDoc();
-  const si=doc.blocks.findIndex(b=>b.id===blockId); if(si<0)return;
-  const[moved]=doc.blocks.splice(si,1);
-  const di=doc.blocks.findIndex(b=>b.id===tid); if(di<0){doc.blocks.splice(si,0,moved);renderDoc();return;}
-  doc.blocks.splice(after?di+1:di,0,moved); renderDoc(); save();
+  const srcArr=findParentArray(blockId); if(!srcArr)return;
+  const si=srcArr.findIndex(b=>b.id===blockId); if(si<0)return;
+  const[moved]=srcArr.splice(si,1);
+  const dstArr=findParentArray(tid);
+  if(!dstArr){srcArr.splice(si,0,moved);renderDoc();return;}
+  const di=dstArr.findIndex(b=>b.id===tid); if(di<0){srcArr.splice(si,0,moved);renderDoc();return;}
+  dstArr.splice(after?di+1:di,0,moved); renderDoc(); save();
 }
 
 // ═══════════════════════════════════════════════════════════
