@@ -425,6 +425,8 @@ input,textarea,select{font-family:inherit}
       <span id="userName"></span>
       <span style="font-size:10px;color:var(--text3)" id="logoutLabel">登出</span>
     </div>
+    <button class="tbtn" onclick="triggerNotionImport()" id="btnImport" style="display:none">📥 匯入 Notion</button>
+    <input type="file" id="notionImportInput" accept=".md,.markdown" style="display:none" onchange="importNotion(this)">
     <button class="tbtn" onclick="openChangelog()" id="btnChangelog" style="display:none">📋 更新日誌</button>
     <button class="tbtn" onclick="openSettings()" id="btnSettings">⚙ 設定</button>
     <button class="tbtn on" onclick="toggleMode()" id="modeBtn" style="display:none">✏️ 編輯中</button>
@@ -531,6 +533,27 @@ input,textarea,select{font-family:inherit}
 </div>
 
 <!-- CHANGELOG MODAL -->
+<div class="modal-bg" id="importModal" onclick="if(event.target===this)closeImportModal()">
+  <div style="background:#fff;border-radius:12px;padding:0;box-shadow:var(--shadow);border:1px solid var(--border);width:480px;overflow:hidden">
+    <div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <h3 style="font-size:16px;font-weight:600">📥 匯入 Notion 文件</h3>
+      <button onclick="closeImportModal()" style="color:var(--text3);font-size:20px;line-height:1;border:none;background:none;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:20px 24px">
+      <div style="font-size:13px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">📄</span>
+        <span><span id="importFileName" style="font-weight:500;color:var(--text)"></span>&nbsp;·&nbsp;共解析 <strong id="importBlockCount"></strong> 個區塊</span>
+      </div>
+      <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:6px;font-weight:500">建立為新文件，名稱：</label>
+      <input id="importDocName" style="width:100%;border:1px solid var(--border2);border-radius:var(--rsm);padding:9px 12px;font-size:14px;font-family:inherit;outline:none;color:var(--text);transition:.15s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'" />
+    </div>
+    <div style="padding:0 24px 20px;display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="closeImportModal()" class="tbtn" style="border:1px solid var(--border)">取消</button>
+      <button onclick="confirmImport()" style="padding:7px 20px;background:var(--accent);color:#fff;border:none;border-radius:var(--rsm);font-size:13px;font-family:inherit;cursor:pointer;font-weight:500">匯入</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="changelogModal" onclick="if(event.target===this)closeChangelog()">
   <div class="cl-modal">
     <div class="cl-head">
@@ -906,9 +929,11 @@ function updateAccess() {
   setText('permLabel', currentUser.name + ' · ' + perm);
   setText('modeBtn', editMode ? T.editingBtn : T.viewBtn);
   document.getElementById('modeBtn').className = 'tbtn' + (editMode ? ' on' : '');
-  // Changelog button: admin only
+  // Changelog + Import buttons: admin only
   const clBtn = document.getElementById('btnChangelog');
   if (clBtn) clBtn.style.display = canManageDocs() ? '' : 'none';
+  const impBtn = document.getElementById('btnImport');
+  if (impBtn) impBtn.style.display = canEdit() ? '' : 'none';
 }
 
 function toggleMode() {
@@ -2246,6 +2271,166 @@ function renderChangelog() {
     if (canJump) el.addEventListener('click', () => jumpToBlock(entry.docId, entry.blockId));
     body.appendChild(el);
   });
+}
+
+// ═══════════════════════════════════════════════════════════
+// NOTION IMPORT
+// ═══════════════════════════════════════════════════════════
+function triggerNotionImport() {
+  document.getElementById('notionImportInput').value = '';
+  document.getElementById('notionImportInput').click();
+}
+
+function importNotion(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const blocks = parseMarkdown(e.target.result);
+    if (!blocks.length) {
+      alert(lang === 'en' ? 'No content found.' : '檔案中沒有可轉換的內容。');
+      return;
+    }
+    const docName = file.name.replace(/\.(md|markdown)$/i, '') || 'Notion 匯入';
+    document.getElementById('importDocName').value = docName;
+    document.getElementById('importFileName').textContent = file.name;
+    document.getElementById('importBlockCount').textContent = blocks.length;
+    window._pendingImportBlocks = blocks;
+    document.getElementById('importModal').classList.add('show');
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function closeImportModal() {
+  document.getElementById('importModal').classList.remove('show');
+  window._pendingImportBlocks = null;
+}
+
+function confirmImport() {
+  const name = document.getElementById('importDocName').value.trim() || 'Notion 匯入';
+  const blocks = window._pendingImportBlocks;
+  if (!blocks) return;
+  const id = Date.now();
+  docs.push({ id, name, blocks });
+  activeId = id;
+  closeImportModal();
+  renderTabs(); renderDoc();
+  save('addDoc', name);
+}
+
+function mdInline(text) {
+  let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  s = s.replace(/_(.+?)_/g, '<em>$1</em>');
+  s = s.replace(/~~(.+?)~~/g, '<s>$1</s>');
+  s = s.replace(/`([^`]+)`/g, '<code style="background:var(--bg3);padding:1px 4px;border-radius:3px;font-size:.9em;font-family:monospace">$1</code>');
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  return s;
+}
+
+function parseMarkdown(text) {
+  const blocks = [];
+  let seed = Date.now();
+  const nextId = () => seed++;
+  const lines = text.split('\n');
+  let i = 0;
+
+  // Skip YAML frontmatter
+  if (lines[0] && lines[0].trim() === '---') {
+    i++;
+    while (i < lines.length && lines[i].trim() !== '---') i++;
+    i++;
+  }
+
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+
+    if (!trimmed) { i++; continue; }
+
+    // Code block
+    if (trimmed.startsWith('```')) {
+      const codeLines = []; i++;
+      while (i < lines.length && !lines[i].trim().startsWith('```')) { codeLines.push(lines[i]); i++; }
+      blocks.push({ id: nextId(), type: 'code', content: codeLines.join('\n') });
+      i++; continue;
+    }
+
+    // Headings
+    const hm = trimmed.match(/^(#{1,4})\s+(.*)/);
+    if (hm) {
+      blocks.push({ id: nextId(), type: ['h1','h2','h3','h4'][hm[1].length - 1], content: mdInline(hm[2]) });
+      i++; continue;
+    }
+
+    // Divider
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+      blocks.push({ id: nextId(), type: 'divider' });
+      i++; continue;
+    }
+
+    // Blockquote
+    if (trimmed.startsWith('>')) {
+      const qLines = [];
+      while (i < lines.length && lines[i].trim().startsWith('>')) {
+        qLines.push(lines[i].trim().replace(/^>\s?/, '')); i++;
+      }
+      blocks.push({ id: nextId(), type: 'quote', content: mdInline(qLines.join(' ')) });
+      continue;
+    }
+
+    // Table → annotation
+    if (trimmed.startsWith('|')) {
+      const rows = [];
+      while (i < lines.length && lines[i].trim().startsWith('|')) {
+        const row = lines[i].trim();
+        if (!/^\|[-| :]+\|$/.test(row))
+          rows.push(row.replace(/^\||\|$/g,'').split('|').map(c=>c.trim()).join(' │ '));
+        i++;
+      }
+      if (rows.length) blocks.push({ id: nextId(), type: 'annotation', content: rows.join('\n') });
+      continue;
+    }
+
+    // Checklist（必須在 bullet 之前判斷）
+    if (/^[-*+]\s+\[[xX ]\]/.test(trimmed)) {
+      const items = [];
+      while (i < lines.length) {
+        const t = lines[i].trim();
+        const m = t.match(/^[-*+]\s+\[([xX ])\]\s+(.*)/);
+        if (m) { items.push({ text: mdInline(m[2]), done: m[1].toLowerCase()==='x' }); i++; }
+        else break;
+      }
+      blocks.push({ id: nextId(), type: 'checklist', items });
+      continue;
+    }
+
+    // Bullet
+    const bm = trimmed.match(/^[-*+]\s+(.*)/);
+    if (bm) {
+      blocks.push({ id: nextId(), type: 'bullet', content: mdInline(bm[1]) });
+      i++; continue;
+    }
+
+    // Ordered list
+    const om = trimmed.match(/^\d+[.)]\s+(.*)/);
+    if (om) {
+      const items = [];
+      while (i < lines.length) {
+        const m = lines[i].trim().match(/^\d+[.)]\s+(.*)/);
+        if (m) { items.push(mdInline(m[1])); i++; }
+        else break;
+      }
+      blocks.push({ id: nextId(), type: 'ordered', items });
+      continue;
+    }
+
+    // 一般文字
+    blocks.push({ id: nextId(), type: 'text', content: mdInline(trimmed) });
+    i++;
+  }
+  return blocks;
 }
 
 function jumpToBlock(docId, blockId) {
