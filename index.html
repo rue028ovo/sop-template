@@ -133,7 +133,7 @@ input,textarea,select{font-family:inherit}
 .bcol-wrap.open .bcol-arrow svg{transform:rotate(90deg)}
 
 /* Body hidden by default */
-.bcol-body{display:none;padding-left:1.2em;margin-top:3px}
+.bcol-body{display:none;padding-left:1.4em;margin-top:3px;overflow:visible}
 .bcol-wrap.open .bcol-body{display:block}
 
 /* Default (no hl) — same as a regular 15px heading */
@@ -1287,9 +1287,21 @@ function makeCollapse(b) {
 
   if (editMode && canEdit()) {
     const btn = document.createElement('button');
-    btn.style.cssText = 'font-size:12px;color:var(--text3);margin-top:4px;padding:3px 8px;border-radius:var(--rsm);border:1px dashed var(--border);display:block';
+    btn.style.cssText = 'font-size:12px;color:var(--text3);margin-top:4px;padding:3px 8px;border-radius:var(--rsm);border:1px dashed var(--border);display:block;background:none;cursor:pointer;font-family:inherit';
     btn.textContent = T.addBlock;
-    btn.onclick = () => { b.children = b.children || []; b.children.push({ id: Date.now(), type: 'text', content: '' }); renderDoc(); };
+    btn.onclick = e => {
+      e.stopPropagation();
+      b.children = b.children || [];
+      if (b.children.length > 0) {
+        const last = b.children[b.children.length - 1];
+        const r = btn.getBoundingClientRect();
+        showAddMenu(last.id, 'below', r.left, r.top);
+      } else {
+        const nb = { id: Date.now(), type: 'text', content: '' };
+        b.children.push(nb); renderDoc();
+        setTimeout(() => { const el = document.querySelector('#blk-'+nb.id+' [contenteditable]'); if(el){el.focus();caretEnd(el);} }, 50);
+      }
+    };
     body.appendChild(btn);
   }
 
@@ -1725,33 +1737,56 @@ function makeNewBlock(type) {
   return m[type] || {id,type:'text',content:''};
 }
 
+// 遞迴找到包含指定 id 的陣列（支援 collapse children 任意嵌套）
+function findParentArray(id, arr) {
+  arr = arr || getDoc().blocks;
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i].id === id) return arr;
+    const b = arr[i];
+    if (b.children) {
+      if (b.cols) {
+        for (const col of b.children) {
+          const f = findParentArray(id, col); if (f) return f;
+        }
+      } else {
+        const f = findParentArray(id, b.children); if (f) return f;
+      }
+    }
+  }
+  return null;
+}
+
 function insertAfter(id, type) {
   if (!canEdit()) return;
-  const doc=getDoc(); const idx=doc.blocks.findIndex(b=>b.id===id); if(idx<0)return;
-  const nb=makeNewBlock(type); doc.blocks.splice(idx+1,0,nb); renderDoc();
-  const T=L(); const typeLabel=(T.blocks[type]||{t:type}).t;
-  autoLog('addBlock', doc.name, typeLabel);
+  const doc=getDoc();
+  const arr = findParentArray(id); if (!arr) return;
+  const idx = arr.findIndex(b=>b.id===id); if(idx<0) return;
+  const nb=makeNewBlock(type); arr.splice(idx+1,0,nb); renderDoc();
+  const T=L(); autoLog('addBlock', doc.name, (T.blocks[type]||{t:type}).t);
   setTimeout(()=>{const el=document.querySelector('#blk-'+nb.id+' [contenteditable]');if(el){el.focus();caretEnd(el);}},50);
 }
 
 function insertBefore(id, type) {
   if (!canEdit()) return;
-  const doc=getDoc(); const idx=doc.blocks.findIndex(b=>b.id===id); if(idx<0)return;
-  const nb=makeNewBlock(type); doc.blocks.splice(idx,0,nb); renderDoc();
-  const T2=L(); const typeLabel2=(T2.blocks[type]||{t:type}).t;
-  autoLog('addBlock', doc.name, typeLabel2);
+  const doc=getDoc();
+  const arr = findParentArray(id); if (!arr) return;
+  const idx = arr.findIndex(b=>b.id===id); if(idx<0) return;
+  const nb=makeNewBlock(type); arr.splice(idx,0,nb); renderDoc();
+  const T=L(); autoLog('addBlock', doc.name, (T.blocks[type]||{t:type}).t);
   setTimeout(()=>{const el=document.querySelector('#blk-'+nb.id+' [contenteditable]');if(el){el.focus();caretEnd(el);}},50);
 }
 
 function deleteBlock(id) {
   if (!canEdit()) return;
-  const doc=getDoc(); const idx=doc.blocks.findIndex(b=>b.id===id);
-  if(idx<0||doc.blocks.length<=1)return;
-  const blk = doc.blocks[idx];
-  // Capture deleted content
+  const doc=getDoc();
+  const arr = findParentArray(id); if (!arr) return;
+  const idx = arr.findIndex(b=>b.id===id); if(idx<0) return;
+  // 頂層最後一個區塊不可刪
+  if (arr === doc.blocks && arr.length <= 1) return;
+  const blk = arr[idx];
   const delText = plainText(blk.content||blk.label||
     (blk.items ? (Array.isArray(blk.items[0])?blk.items[0].text:blk.items[0])||'' : '')||'');
-  doc.blocks.splice(idx,1); renderDoc();
+  arr.splice(idx,1); renderDoc();
   autoLog('deleteBlock', doc.name, '', delText ? {type:'del', text:delText} : null);
   saveChangelog();
 }
