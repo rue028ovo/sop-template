@@ -4,6 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>SOP Template</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCyLhg8vd3LTZ3jDpUcRTXXqYky2jpg7Dk",
+    authDomain: "sop-template.firebaseapp.com",
+    databaseURL: "https://sop-template-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "sop-template",
+    storageBucket: "sop-template.firebasestorage.app",
+    messagingSenderId: "94084769702",
+    appId: "1:94084769702:web:0fef6cea0dbed9842b5167"
+  };
+  firebase.initializeApp(firebaseConfig);
+  window.fbDb = firebase.database();
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -2133,6 +2148,7 @@ function autoLog(action, docName, detail, diff) {
 
 function saveChangelog() {
   try { localStorage.setItem('sop_changelog', JSON.stringify(changelog)); } catch(e){}
+  if(window.fbDb) window.fbDb.ref('sop_changelog').set(changelog).catch(()=>{});
 }
 
 function openChangelog() {
@@ -2240,6 +2256,7 @@ function save(action, detail){
     setText('stext',L().saved);
     document.getElementById('sdot').style.background='#22c55e';
     try{localStorage.setItem('sop_docs',JSON.stringify(docs));}catch(e){}
+    if(window.fbDb) window.fbDb.ref('sop_docs').set(docs).catch(()=>{});
   },800);
 }
 function updateWordCount(){
@@ -2268,12 +2285,40 @@ document.addEventListener('click',e=>{
 // INIT
 // ═══════════════════════════════════════════════════════════
 function init(){
-  try{const s=localStorage.getItem('sop_docs');if(s)docs=JSON.parse(s);}catch(e){}
-  try{const c=localStorage.getItem('sop_changelog');if(c)changelog=JSON.parse(c);}catch(e){}
   applyLang(); buildColorGrids(); buildSlashMenu();
   setText('stext', L().saved);
   document.getElementById('sdot').style.background='#22c55e';
-  renderLogin();
+
+  if(window.fbDb){
+    Promise.all([
+      window.fbDb.ref('sop_docs').once('value'),
+      window.fbDb.ref('sop_changelog').once('value')
+    ]).then(([docsSnap, clSnap])=>{
+      const fd = docsSnap.val(); if(fd) docs = fd;
+      const fc = clSnap.val();   if(fc) changelog = fc;
+      renderLogin();
+
+      // 即時監聽其他人的變更
+      let skip = true;
+      window.fbDb.ref('sop_docs').on('value', snap=>{
+        if(skip){ skip=false; return; }
+        const d = snap.val(); if(!d) return;
+        docs = d;
+        renderTabs(); renderDoc();
+      });
+      window.fbDb.ref('sop_changelog').on('value', snap=>{
+        const c = snap.val(); if(c) changelog = c;
+      });
+    }).catch(()=>{
+      try{const s=localStorage.getItem('sop_docs');if(s)docs=JSON.parse(s);}catch(e){}
+      try{const c=localStorage.getItem('sop_changelog');if(c)changelog=JSON.parse(c);}catch(e){}
+      renderLogin();
+    });
+  } else {
+    try{const s=localStorage.getItem('sop_docs');if(s)docs=JSON.parse(s);}catch(e){}
+    try{const c=localStorage.getItem('sop_changelog');if(c)changelog=JSON.parse(c);}catch(e){}
+    renderLogin();
+  }
 }
 init();
 </script>
