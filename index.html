@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>SOP Template</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
@@ -426,7 +427,7 @@ input,textarea,select{font-family:inherit}
       <span style="font-size:10px;color:var(--text3)" id="logoutLabel">登出</span>
     </div>
     <button class="tbtn" onclick="triggerNotionImport()" id="btnImport" style="display:none">📥 匯入 Notion</button>
-    <input type="file" id="notionImportInput" accept=".md,.markdown" style="display:none" onchange="importNotion(this)">
+    <input type="file" id="notionImportInput" accept=".md,.markdown,.zip" style="display:none" onchange="importNotion(this)">
     <button class="tbtn" onclick="openChangelog()" id="btnChangelog" style="display:none">📋 更新日誌</button>
     <button class="tbtn" onclick="openSettings()" id="btnSettings">⚙ 設定</button>
     <button class="tbtn on" onclick="toggleMode()" id="modeBtn" style="display:none">✏️ 編輯中</button>
@@ -2284,21 +2285,77 @@ function triggerNotionImport() {
 function importNotion(input) {
   const file = input.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const blocks = parseMarkdown(e.target.result);
-    if (!blocks.length) {
-      alert(lang === 'en' ? 'No content found.' : '檔案中沒有可轉換的內容。');
-      return;
+  if (/\.zip$/i.test(file.name)) {
+    importNotionZip(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const blocks = parseMarkdown(e.target.result, {});
+      if (!blocks.length) { alert('檔案中沒有可轉換的內容。'); return; }
+      const docName = file.name.replace(/\.(md|markdown)$/i, '') || 'Notion 匯入';
+      showImportPreview(docName, blocks, file.name);
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+}
+
+async function importNotionZip(file) {
+  if (!window.JSZip) { alert('JSZip 尚未載入，請重新整理後再試。'); return; }
+  try {
+    // 解外層 ZIP
+    let zip = await JSZip.loadAsync(file);
+
+    // Notion 會包雙層 ZIP (outer → inner Part-1.zip → 實際檔案)
+    const innerZipEntry = Object.values(zip.files).find(f => /\.zip$/i.test(f.name) && !f.dir);
+    if (innerZipEntry) {
+      const innerData = await innerZipEntry.async('arraybuffer');
+      zip = await JSZip.loadAsync(innerData);
     }
-    const docName = file.name.replace(/\.(md|markdown)$/i, '') || 'Notion 匯入';
-    document.getElementById('importDocName').value = docName;
-    document.getElementById('importFileName').textContent = file.name;
-    document.getElementById('importBlockCount').textContent = blocks.length;
-    window._pendingImportBlocks = blocks;
-    document.getElementById('importModal').classList.add('show');
-  };
-  reader.readAsText(file, 'UTF-8');
+
+    // 找所有 .md 檔
+    const mdEntries = Object.values(zip.files).filter(f => /\.(md|markdown)$/i.test(f.name) && !f.dir);
+    if (!mdEntries.length) { alert('ZIP 中找不到 Markdown 檔案，請確認是 Notion 匯出的 ZIP。'); return; }
+
+    // 所有圖片 → base64 data URI
+    const imageMap = {};
+    const imgEntries = Object.values(zip.files).filter(f => /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name) && !f.dir);
+    await Promise.all(imgEntries.map(async entry => {
+      const b64 = await entry.async('base64');
+      const ext = entry.name.split('.').pop().toLowerCase();
+      const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+      const dataUrl = `data:${mime};base64,${b64}`;
+      imageMap[entry.name] = dataUrl;
+      try { imageMap[decodeURIComponent(entry.name)] = dataUrl; } catch(e) {}
+    }));
+
+    // 如果有多個 .md，全部匯入；顯示預覽前先排隊
+    const parsed = [];
+    for (const mdEntry of mdEntries) {
+      const text = await mdEntry.async('string');
+      const blocks = parseMarkdown(text, imageMap);
+      if (blocks.length) {
+        const name = mdEntry.name.replace(/\.(md|markdown)$/i,'').replace(/^.*\//,'')
+          .replace(/\s+[0-9a-f]{8,}$/i,'').trim() || 'Notion 匯入';
+        parsed.push({ name, blocks });
+      }
+    }
+    if (!parsed.length) { alert('沒有可匯入的內容。'); return; }
+
+    window._pendingImportQueue = parsed;
+    window._pendingImportBlocks = parsed[0].blocks;
+    showImportPreview(parsed[0].name, parsed[0].blocks, file.name);
+
+  } catch(err) {
+    alert('解壓縮失敗：' + err.message);
+    console.error(err);
+  }
+}
+
+function showImportPreview(docName, blocks, fileName) {
+  document.getElementById('importDocName').value = docName;
+  document.getElementById('importFileName').textContent = fileName;
+  document.getElementById('importBlockCount').textContent = blocks.length;
+  document.getElementById('importModal').classList.add('show');
 }
 
 function closeImportModal() {
@@ -2310,9 +2367,20 @@ function confirmImport() {
   const name = document.getElementById('importDocName').value.trim() || 'Notion 匯入';
   const blocks = window._pendingImportBlocks;
   if (!blocks) return;
+
+  // 匯入第一份（已命名）
   const id = Date.now();
   docs.push({ id, name, blocks });
   activeId = id;
+
+  // 若 ZIP 內有多份 .md，一起匯入（使用原始名稱）
+  const queue = window._pendingImportQueue || [];
+  queue.slice(1).forEach((item, idx) => {
+    docs.push({ id: id + idx + 1, name: item.name, blocks: item.blocks });
+  });
+  window._pendingImportQueue = null;
+  window._pendingImportBlocks = null;
+
   closeImportModal();
   renderTabs(); renderDoc();
   save('addDoc', name);
@@ -2330,12 +2398,16 @@ function mdInline(text) {
   return s;
 }
 
-function parseMarkdown(text) {
+function parseMarkdown(text, imageMap) {
+  imageMap = imageMap || {};
   const blocks = [];
   let seed = Date.now();
   const nextId = () => seed++;
   const lines = text.split('\n');
   let i = 0;
+  let lastImgBlock = null; // 用來把相鄰圖片（中間只有空行）合併成一個圖片區塊
+
+  const resetImg = () => { lastImgBlock = null; };
 
   // Skip YAML frontmatter
   if (lines[0] && lines[0].trim() === '---') {
@@ -2345,11 +2417,35 @@ function parseMarkdown(text) {
   }
 
   while (i < lines.length) {
-    const trimmed = lines[i].trim();
+    // 去除 Notion 縮排（4 空格 or tab），保留原始結構判斷
+    const raw = lines[i];
+    const trimmed = raw.trim();
 
+    // 空行：不重置圖片分組（讓相鄰圖片能合併）
     if (!trimmed) { i++; continue; }
 
-    // Code block
+    // ── 圖片（Notion 格式：![alt](filename.png)）──
+    const imgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)/);
+    if (imgMatch) {
+      let filename = imgMatch[2];
+      try { filename = decodeURIComponent(filename); } catch(e) {}
+      const src = imageMap[filename] || imageMap[imgMatch[2]] || null;
+      if (src) {
+        if (lastImgBlock) {
+          // 合併到前一個圖片區塊（carousel）
+          lastImgBlock.images.push({ src, cap: imgMatch[1] || '' });
+        } else {
+          lastImgBlock = { id: nextId(), type: 'image', images: [{ src, cap: imgMatch[1] || '' }], viewMode: 'carousel', gridCols: 2 };
+          blocks.push(lastImgBlock);
+        }
+      }
+      i++; continue;
+    }
+
+    // 非圖片、非空行 → 重置圖片分組
+    resetImg();
+
+    // ── Code block ──
     if (trimmed.startsWith('```')) {
       const codeLines = []; i++;
       while (i < lines.length && !lines[i].trim().startsWith('```')) { codeLines.push(lines[i]); i++; }
@@ -2357,30 +2453,32 @@ function parseMarkdown(text) {
       i++; continue;
     }
 
-    // Headings
+    // ── Headings ──
     const hm = trimmed.match(/^(#{1,4})\s+(.*)/);
     if (hm) {
       blocks.push({ id: nextId(), type: ['h1','h2','h3','h4'][hm[1].length - 1], content: mdInline(hm[2]) });
       i++; continue;
     }
 
-    // Divider
+    // ── Divider ──
     if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
       blocks.push({ id: nextId(), type: 'divider' });
       i++; continue;
     }
 
-    // Blockquote
+    // ── Blockquote ──
     if (trimmed.startsWith('>')) {
       const qLines = [];
       while (i < lines.length && lines[i].trim().startsWith('>')) {
-        qLines.push(lines[i].trim().replace(/^>\s?/, '')); i++;
+        const q = lines[i].trim().replace(/^>\s?/, '');
+        if (q) qLines.push(q);
+        i++;
       }
-      blocks.push({ id: nextId(), type: 'quote', content: mdInline(qLines.join(' ')) });
+      if (qLines.length) blocks.push({ id: nextId(), type: 'quote', content: mdInline(qLines.join(' ')) });
       continue;
     }
 
-    // Table → annotation
+    // ── Table → annotation ──
     if (trimmed.startsWith('|')) {
       const rows = [];
       while (i < lines.length && lines[i].trim().startsWith('|')) {
@@ -2393,7 +2491,7 @@ function parseMarkdown(text) {
       continue;
     }
 
-    // Checklist（必須在 bullet 之前判斷）
+    // ── Checklist（必須在 bullet 之前判斷）──
     if (/^[-*+]\s+\[[xX ]\]/.test(trimmed)) {
       const items = [];
       while (i < lines.length) {
@@ -2406,14 +2504,14 @@ function parseMarkdown(text) {
       continue;
     }
 
-    // Bullet
+    // ── Bullet ──
     const bm = trimmed.match(/^[-*+]\s+(.*)/);
     if (bm) {
       blocks.push({ id: nextId(), type: 'bullet', content: mdInline(bm[1]) });
       i++; continue;
     }
 
-    // Ordered list
+    // ── Ordered list ──
     const om = trimmed.match(/^\d+[.)]\s+(.*)/);
     if (om) {
       const items = [];
@@ -2426,7 +2524,7 @@ function parseMarkdown(text) {
       continue;
     }
 
-    // 一般文字
+    // ── 一般文字 ──
     blocks.push({ id: nextId(), type: 'text', content: mdInline(trimmed) });
     i++;
   }
