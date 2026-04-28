@@ -432,6 +432,7 @@ input,textarea,select{font-family:inherit}
     <button class="tbtn" onclick="openChangelog()" id="btnChangelog" style="display:none">📋 更新日誌</button>
     <button class="tbtn" onclick="openSettings()" id="btnSettings">⚙ 設定</button>
     <button class="tbtn on" onclick="toggleMode()" id="modeBtn" style="display:none">✏️ 編輯中</button>
+    <button class="tbtn" onclick="forceSave()" id="btnSave" style="display:none;font-size:15px;padding:5px 10px" title="Force save to cloud">💾</button>
   </div>
 </div>
 
@@ -937,6 +938,8 @@ function updateAccess() {
   if (clBtn) clBtn.style.display = canManageDocs() ? '' : 'none';
   const impBtn = document.getElementById('btnImport');
   if (impBtn) impBtn.style.display = canManageDocs() ? '' : 'none';
+  const saveBtn = document.getElementById('btnSave');
+  if (saveBtn) saveBtn.style.display = canEdit() ? '' : 'none';
 }
 
 function toggleMode() {
@@ -2571,8 +2574,12 @@ function closeSettings(){document.getElementById('settingsModal').classList.remo
 // ═══════════════════════════════════════════════════════════
 // SAVE / WORD COUNT
 // ═══════════════════════════════════════════════════════════
+
+// Firebase 將陣列存為 object，讀回時需轉換
+function toArr(v){ return Array.isArray(v)?v:(v&&typeof v==='object'?Object.values(v):null); }
+
 function save(action, detail){
-  // Only log non-edit actions here (edit diffs are logged directly from input handlers)
+  if(!docs||!docs.length) return; // 防止意外覆蓋空資料
   if (action && action !== 'edit') autoLog(action, getDoc().name, detail||'');
   setText('stext',L().saving);
   document.getElementById('sdot').style.background='#f59e0b';
@@ -2583,6 +2590,23 @@ function save(action, detail){
     try{localStorage.setItem('sop_docs',JSON.stringify(docs));}catch(e){}
     if(window.fbDb) window.fbDb.ref('sop_docs').set(docs).catch(()=>{});
   },800);
+}
+
+function forceSave(){
+  if(!docs||!docs.length) return;
+  clearTimeout(saveTimer);
+  setText('stext',L().saving);
+  document.getElementById('sdot').style.background='#f59e0b';
+  const btn=document.getElementById('btnSave');
+  if(btn){btn.style.opacity='.4';btn.disabled=true;}
+  try{localStorage.setItem('sop_docs',JSON.stringify(docs));}catch(e){}
+  const done=()=>{
+    setText('stext',L().saved);
+    document.getElementById('sdot').style.background='#22c55e';
+    if(btn){btn.style.opacity='';btn.disabled=false;btn.textContent='✓';setTimeout(()=>{if(btn)btn.textContent='💾';},1500);}
+  };
+  if(window.fbDb) window.fbDb.ref('sop_docs').set(docs).then(done).catch(done);
+  else done();
 }
 function updateWordCount(){
   const text=document.getElementById('blocks')?.innerText||'';
@@ -2619,20 +2643,19 @@ function init(){
       window.fbDb.ref('sop_docs').once('value'),
       window.fbDb.ref('sop_changelog').once('value')
     ]).then(([docsSnap, clSnap])=>{
-      const fd = docsSnap.val(); if(fd) docs = fd;
-      const fc = clSnap.val();   if(fc) changelog = fc;
+      const fa = toArr(docsSnap.val()); if(fa&&fa.length) docs = fa;
+      const ca = toArr(clSnap.val());  if(ca&&ca.length) changelog = ca;
       renderLogin();
 
       // 即時監聽其他人的變更
       let skip = true;
       window.fbDb.ref('sop_docs').on('value', snap=>{
         if(skip){ skip=false; return; }
-        const d = snap.val(); if(!d) return;
-        docs = d;
-        renderTabs(); renderDoc();
+        const a = toArr(snap.val()); if(!a||!a.length) return;
+        docs = a; renderTabs(); renderDoc();
       });
       window.fbDb.ref('sop_changelog').on('value', snap=>{
-        const c = snap.val(); if(c) changelog = c;
+        const c = toArr(snap.val()); if(c&&c.length) changelog = c;
       });
     }).catch(()=>{
       try{const s=localStorage.getItem('sop_docs');if(s)docs=JSON.parse(s);}catch(e){}
