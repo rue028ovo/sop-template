@@ -936,7 +936,7 @@ function updateAccess() {
   const clBtn = document.getElementById('btnChangelog');
   if (clBtn) clBtn.style.display = canManageDocs() ? '' : 'none';
   const impBtn = document.getElementById('btnImport');
-  if (impBtn) impBtn.style.display = canEdit() ? '' : 'none';
+  if (impBtn) impBtn.style.display = canManageDocs() ? '' : 'none';
 }
 
 function toggleMode() {
