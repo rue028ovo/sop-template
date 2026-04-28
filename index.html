@@ -2681,6 +2681,27 @@ function init(){
   }
 }
 init();
+
+// ── 文件列橫向滾動 ──
+(function(){
+  const tw = document.getElementById('tabsWrap');
+  // 滑鼠滾輪 → 橫向
+  tw.addEventListener('wheel', e => {
+    if(e.deltaY === 0) return;
+    e.preventDefault();
+    tw.scrollLeft += e.deltaY * 1.2;
+  }, { passive: false });
+  // 滑鼠拖曳
+  let drag=false, startX=0, startLeft=0;
+  tw.addEventListener('mousedown', e => {
+    if(e.target.closest('.doc-tab,.btn-new')) return;
+    drag=true; startX=e.clientX; startLeft=tw.scrollLeft; tw.style.cursor='grabbing';
+  });
+  document.addEventListener('mousemove', e => {
+    if(!drag) return; tw.scrollLeft = startLeft-(e.clientX-startX);
+  });
+  document.addEventListener('mouseup', () => { drag=false; tw.style.cursor=''; });
+})();
 </script>
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
   <span class="lightbox-close">✕</span>
