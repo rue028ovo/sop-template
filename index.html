@@ -384,6 +384,22 @@ input,textarea,select{font-family:inherit}
 .lang-card:hover{border-color:var(--accent-bg);background:var(--accent-bg)}
 .lang-card.sel{border-color:var(--accent);background:var(--accent-bg)}
 
+/* ── TRASH ── */
+.trash-modal{background:#fff;border-radius:12px;padding:0;box-shadow:var(--shadow);border:1px solid var(--border);width:600px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
+.trash-head{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.trash-body{flex:1;overflow-y:auto;padding:12px 16px}
+.trash-item{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:8px;transition:.12s}
+.trash-item:hover{background:var(--bg2)}
+.trash-thumb{width:44px;height:34px;border-radius:5px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);background:var(--bg3)}
+.trash-thumb-emoji{width:44px;height:34px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--bg2);border:1px solid var(--border)}
+.trash-thumb-plain{width:44px;height:34px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--bg2);border:1px solid var(--border)}
+.trash-info{flex:1;min-width:0}
+.trash-name{font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trash-meta{font-size:11.5px;color:var(--text3);margin-top:2px}
+.trash-acts{display:flex;gap:6px;flex-shrink:0}
+.trash-empty{padding:48px 24px;text-align:center;color:var(--text3);font-size:14px}
+.trash-empty .te-icon{font-size:40px;margin-bottom:10px}
+.trash-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--bg2)}
 /* ── COVER PICKER ── */
 .cp-modal{background:#fff;border-radius:12px;padding:0;box-shadow:var(--shadow);border:1px solid var(--border);width:440px;max-height:520px;display:flex;flex-direction:column;overflow:hidden}
 .cp-head{padding:16px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -473,6 +489,7 @@ input,textarea,select{font-family:inherit}
     <input type="file" id="notionImportInput" accept=".md,.markdown,.zip" style="display:none" onchange="importNotion(this)">
     <input type="file" id="coverInput" accept="image/*" style="display:none" onchange="onCoverUpload(this)">
     <button class="tbtn" onclick="openChangelog()" id="btnChangelog" style="display:none">📋 更新日誌</button>
+    <button class="tbtn" onclick="openTrash()" id="btnTrash" style="display:none">🗑 垃圾桶</button>
     <button class="tbtn" onclick="openSettings()" id="btnSettings">⚙ 設定</button>
     <button class="tbtn on" onclick="toggleMode()" id="modeBtn" style="display:none">✏️ 編輯中</button>
     <button class="tbtn" onclick="forceSave()" id="btnSave" style="display:none" title="Force save to cloud">💾 Save</button>
@@ -625,6 +642,24 @@ input,textarea,select{font-family:inherit}
       <div class="lang-card" id="lc-en" onclick="setLang('en')">🇺🇸<div style="font-weight:600;margin-top:4px">English</div></div>
     </div>
     <div class="mbtns"><button class="tbtn" onclick="closeSettings()" id="stClose">關閉</button></div>
+  </div>
+</div>
+
+<!-- TRASH MODAL -->
+<div class="modal-bg" id="trashModal" onclick="if(event.target===this)closeTrash()">
+  <div class="trash-modal">
+    <div class="trash-head">
+      <div>
+        <h3 style="font-size:16px;font-weight:600" id="trashTitle">🗑 垃圾桶</h3>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px" id="trashSub">已刪除的文件可在此還原</div>
+      </div>
+      <button onclick="closeTrash()" style="color:var(--text3);font-size:20px;line-height:1;border:none;background:none;cursor:pointer">✕</button>
+    </div>
+    <div class="trash-body" id="trashBody"></div>
+    <div class="trash-foot">
+      <span style="font-size:12px;color:var(--text3)" id="trashCount"></span>
+      <button onclick="emptyTrash()" id="btnEmptyTrash" style="font-size:12px;padding:5px 14px;border-radius:20px;border:1px solid #fca5a5;color:#dc2626;background:#fef2f2;cursor:pointer;font-family:inherit;transition:.15s">🗑 清空垃圾桶</button>
+    </div>
   </div>
 </div>
 
@@ -878,6 +913,8 @@ function applyLang() {
   setText('ndCancel', T.cancelBtn); setText('ndCreate', T.createBtn);
   setText('stTitle', T.stTitle); setText('stLangLabel', T.stLangLabel);
   setText('stClose', T.closeBtn);
+  // trash button
+  setText('btnTrash', lang==='en'?'🗑 Trash':'🗑 垃圾桶');
   // cover picker
   setText('cpTitle', lang==='en'?'Cover':'封面設定');
   setText('cpTabEmoji', lang==='en'?'Emoji':'表情符號');
@@ -1013,6 +1050,8 @@ function updateAccess() {
   if (clBtn) clBtn.style.display = canManageDocs() ? '' : 'none';
   const impBtn = document.getElementById('btnImport');
   if (impBtn) impBtn.style.display = canManageDocs() ? '' : 'none';
+  const trashBtn = document.getElementById('btnTrash');
+  if (trashBtn) trashBtn.style.display = canManageDocs() ? '' : 'none';
   const saveBtn = document.getElementById('btnSave');
   if (saveBtn) saveBtn.style.display = canEdit() ? '' : 'none';
 }
@@ -1055,10 +1094,16 @@ function closeTab(e, id) {
   if (!canManageDocs()) return;
   if (docs.length<=1) return;
   const deletedDoc = docs.find(d=>d.id===id);
+  if (!deletedDoc) return;
+  // Move to trash instead of permanent delete
+  trash.unshift({ doc: JSON.parse(JSON.stringify(deletedDoc)), deletedAt: Date.now(), deletedBy: currentUser ? currentUser.name : '' });
   docs = docs.filter(d=>d.id!==id);
   if (activeId===id) activeId=docs[0].id;
   renderTabs(); renderDoc();
-  if (deletedDoc) autoLog('deleteDoc', deletedDoc.name);
+  saveTrash();
+  autoLog('deleteDoc', deletedDoc.name);
+  // Show undo toast
+  showUndoToast(deletedDoc.name, id);
 }
 
 function newDoc() {
@@ -2401,6 +2446,7 @@ function removeUser(){}
 // CHANGELOG — fully automatic, no manual input
 // ═══════════════════════════════════════════════════════════
 let changelog = [];
+let trash = [];  // { doc, deletedAt, deletedBy }
 
 // Action type labels
 const CL_LABELS = {
@@ -2501,6 +2547,165 @@ function clearChangelog() {
   if (!canManageDocs()) return;
   if (!confirm(lang==='en'?'Clear all changelog entries?':'確定要清除所有更新記錄嗎？')) return;
   changelog = []; saveChangelog(); renderChangelog();
+}
+
+// ═══════════════════════════════════════════════════════════
+// TRASH (recycle bin)
+// ═══════════════════════════════════════════════════════════
+function saveTrash() {
+  try { localStorage.setItem('sop_trash', JSON.stringify(trash)); } catch(e){}
+  if(window.fbDb) window.fbDb.ref('sop_trash').set(trash.length ? trash : null).catch(()=>{});
+}
+
+function openTrash() {
+  renderTrashModal();
+  document.getElementById('trashModal').classList.add('show');
+}
+
+function closeTrash() {
+  document.getElementById('trashModal').classList.remove('show');
+}
+
+function renderTrashModal() {
+  const isEn = lang === 'en';
+  setText('trashTitle', isEn ? '🗑 Trash' : '🗑 垃圾桶');
+  setText('trashSub', isEn ? 'Deleted documents can be restored here' : '已刪除的文件可在此還原');
+  const body = document.getElementById('trashBody');
+  const countEl = document.getElementById('trashCount');
+  const emptyBtn = document.getElementById('btnEmptyTrash');
+  setText('btnEmptyTrash', isEn ? '🗑 Empty Trash' : '🗑 清空垃圾桶');
+
+  if (!trash.length) {
+    body.innerHTML = `<div class="trash-empty"><div class="te-icon">🗑</div><div>${isEn ? 'Trash is empty' : '垃圾桶是空的'}</div><div style="font-size:12px;color:var(--text3);margin-top:6px">${isEn ? 'Deleted documents will appear here' : '刪除的文件會顯示在這裡'}</div></div>`;
+    if (countEl) countEl.textContent = '';
+    if (emptyBtn) emptyBtn.style.display = 'none';
+    return;
+  }
+
+  if (countEl) countEl.textContent = isEn ? trash.length + ' document(s)' : trash.length + ' 個文件';
+  if (emptyBtn) emptyBtn.style.display = '';
+
+  body.innerHTML = '';
+  trash.forEach((item, idx) => {
+    const doc = item.doc;
+    const ts = new Date(item.deletedAt);
+    const tsStr = ts.toLocaleDateString(lang==='en'?'en-US':'zh-TW', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    const byStr = item.deletedBy ? (isEn ? ` · by ${item.deletedBy}` : ` · ${item.deletedBy} 刪除`) : '';
+
+    // Thumbnail
+    let thumbHtml = '';
+    if (doc.cover) {
+      if (typeof doc.cover === 'string') {
+        thumbHtml = `<img class="trash-thumb" src="${doc.cover}" alt="">`;
+      } else if (doc.cover.type === 'emoji') {
+        thumbHtml = `<div class="trash-thumb-emoji" style="background:${doc.cover.bg||'#e0e7ff'}">${doc.cover.value}</div>`;
+      } else if (doc.cover.type === 'image') {
+        thumbHtml = `<img class="trash-thumb" src="${doc.cover.src}" alt="">`;
+      }
+    } else {
+      thumbHtml = `<div class="trash-thumb-plain">📄</div>`;
+    }
+
+    const blockCount = countBlocks(doc.blocks || []);
+
+    const row = document.createElement('div');
+    row.className = 'trash-item';
+    row.innerHTML = `
+      ${thumbHtml}
+      <div class="trash-info">
+        <div class="trash-name">${doc.name || (isEn?'Untitled':'無標題')}</div>
+        <div class="trash-meta">${isEn?'Deleted':'刪除於'} ${tsStr}${byStr} · ${blockCount} ${isEn?'blocks':'個區塊'}</div>
+      </div>
+      <div class="trash-acts">
+        <button onclick="restoreDoc(${idx})" style="font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-family:inherit;background:#fff;color:var(--text);transition:.15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='#fff'">↩ ${isEn?'Restore':'還原'}</button>
+        <button onclick="permanentDelete(${idx})" style="font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid #fca5a5;cursor:pointer;font-family:inherit;background:#fef2f2;color:#dc2626;transition:.15s" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">✕ ${isEn?'Delete':'永久刪除'}</button>
+      </div>
+    `;
+    body.appendChild(row);
+  });
+}
+
+function countBlocks(blocks) {
+  let n = 0;
+  for (const b of blocks) {
+    n++;
+    if (b.children) {
+      if (b.cols) { for (const col of b.children) n += countBlocks(col); }
+      else n += countBlocks(b.children);
+    }
+    if (b.items && Array.isArray(b.items)) n += b.items.length;
+  }
+  return n;
+}
+
+function restoreDoc(idx) {
+  const item = trash[idx]; if (!item) return;
+  const doc = item.doc;
+  // Ensure unique id
+  if (docs.find(d=>d.id===doc.id)) doc.id = Date.now();
+  docs.push(doc);
+  trash.splice(idx, 1);
+  activeId = doc.id;
+  saveTrash(); save('addDoc', doc.name);
+  renderTabs(); renderDoc();
+  renderTrashModal();
+  showToast(lang==='en' ? `"${doc.name}" restored` : `「${doc.name}」已還原`, '↩');
+}
+
+function permanentDelete(idx) {
+  const item = trash[idx]; if (!item) return;
+  const name = item.doc.name || '';
+  if (!confirm(lang==='en' ? `Permanently delete "${name}"? This cannot be undone.` : `確定永久刪除「${name}」？此操作無法復原。`)) return;
+  trash.splice(idx, 1);
+  saveTrash(); renderTrashModal();
+}
+
+function emptyTrash() {
+  if (!trash.length) return;
+  if (!confirm(lang==='en' ? 'Permanently delete all items in Trash? This cannot be undone.' : '確定清空垃圾桶？所有文件將永久刪除，無法復原。')) return;
+  trash = []; saveTrash(); renderTrashModal();
+}
+
+// Undo toast — appears at bottom for 5s
+let _undoTimer = null;
+function showUndoToast(docName, docId) {
+  let toast = document.getElementById('undoToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'undoToast';
+    toast.style.cssText = 'position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:#1c1917;color:#fff;padding:10px 18px;border-radius:24px;font-size:13px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.25);transition:opacity .25s';
+    document.body.appendChild(toast);
+  }
+  const label = lang==='en' ? `"${docName}" moved to Trash` : `「${docName}」已移至垃圾桶`;
+  const undoLabel = lang==='en' ? 'Undo' : '復原';
+  toast.innerHTML = `<span>${label}</span><button onclick="undoDelete()" style="font-size:12px;font-weight:600;color:#60a5fa;background:none;border:none;cursor:pointer;padding:0;font-family:inherit">${undoLabel}</button>`;
+  toast.style.opacity = '1';
+  if (_undoTimer) clearTimeout(_undoTimer);
+  _undoTimer = setTimeout(() => { toast.style.opacity='0'; setTimeout(()=>{if(toast.parentNode)toast.remove();},300); }, 5000);
+}
+
+function showToast(msg, icon) {
+  let toast = document.getElementById('genToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'genToast';
+    toast.style.cssText = 'position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:#1c1917;color:#fff;padding:10px 18px;border-radius:24px;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25);transition:opacity .25s';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = (icon ? icon + ' ' : '') + msg;
+  toast.style.opacity = '1';
+  setTimeout(() => { toast.style.opacity='0'; }, 2500);
+}
+
+function undoDelete() {
+  // Restore the most recently trashed item
+  if (!trash.length) return;
+  const item = trash[0];
+  restoreDoc(0);
+  // Hide the undo toast
+  const toast = document.getElementById('undoToast');
+  if (toast) { toast.style.opacity='0'; setTimeout(()=>{ if(toast.parentNode) toast.remove(); },300); }
+  if (_undoTimer) { clearTimeout(_undoTimer); _undoTimer=null; }
 }
 
 function renderChangelog() {
@@ -2926,10 +3131,12 @@ function init(){
   if(window.fbDb){
     Promise.all([
       window.fbDb.ref('sop_docs').once('value'),
-      window.fbDb.ref('sop_changelog').once('value')
-    ]).then(([docsSnap, clSnap])=>{
+      window.fbDb.ref('sop_changelog').once('value'),
+      window.fbDb.ref('sop_trash').once('value')
+    ]).then(([docsSnap, clSnap, trashSnap])=>{
       const fa = toArr(docsSnap.val()); if(fa&&fa.length) docs = fa;
       const ca = toArr(clSnap.val());  if(ca&&ca.length) changelog = ca;
+      const ta = toArr(trashSnap.val()); if(ta&&ta.length) trash = ta;
       renderLogin();
 
       // 即時監聽其他人的變更
@@ -2942,14 +3149,19 @@ function init(){
       window.fbDb.ref('sop_changelog').on('value', snap=>{
         const c = toArr(snap.val()); if(c&&c.length) changelog = c;
       });
+      window.fbDb.ref('sop_trash').on('value', snap=>{
+        const t = toArr(snap.val()); trash = t && t.length ? t : [];
+      });
     }).catch(()=>{
       try{const s=localStorage.getItem('sop_docs');if(s)docs=JSON.parse(s);}catch(e){}
       try{const c=localStorage.getItem('sop_changelog');if(c)changelog=JSON.parse(c);}catch(e){}
+      try{const t=localStorage.getItem('sop_trash');if(t)trash=JSON.parse(t);}catch(e){}
       renderLogin();
     });
   } else {
     try{const s=localStorage.getItem('sop_docs');if(s)docs=JSON.parse(s);}catch(e){}
     try{const c=localStorage.getItem('sop_changelog');if(c)changelog=JSON.parse(c);}catch(e){}
+    try{const t=localStorage.getItem('sop_trash');if(t)trash=JSON.parse(t);}catch(e){}
     renderLogin();
   }
 }
