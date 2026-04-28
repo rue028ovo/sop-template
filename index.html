@@ -73,6 +73,17 @@ input,textarea,select{font-family:inherit}
 .editor{width:100%;max-width:760px}
 .doc-title{font-size:32px;font-weight:700;border:none;outline:none;background:none;width:100%;margin-bottom:28px;color:var(--text);line-height:1.25;padding:4px 0}
 .doc-title::placeholder{color:var(--text3)}
+/* ── COVER ── */
+.doc-cover-wrap{margin:-48px -64px 32px;position:relative;background:var(--bg3)}
+.doc-cover-wrap img{width:100%;height:220px;object-fit:cover;display:block}
+.doc-cover-acts{position:absolute;bottom:10px;right:14px;display:flex;gap:6px;opacity:0;transition:.2s}
+.doc-cover-wrap:hover .doc-cover-acts{opacity:1}
+.doc-cover-btn{font-size:12px;padding:4px 12px;border-radius:20px;background:rgba(255,255,255,.92);border:1px solid rgba(0,0,0,.1);cursor:pointer;font-family:inherit;color:var(--text);backdrop-filter:blur(4px)}
+.doc-cover-btn:hover{background:#fff}
+.doc-add-cover{margin:-48px -64px 0;height:52px;display:flex;align-items:flex-end;padding-bottom:6px;padding-left:12px}
+.doc-add-cover-btn{opacity:0;transition:.2s;font-size:12px;padding:4px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-family:inherit;color:var(--text2);background:var(--bg2)}
+.doc-add-cover:hover .doc-add-cover-btn{opacity:1}
+.doc-tab-thumb{width:20px;height:20px;border-radius:3px;object-fit:cover;flex-shrink:0}
 
 /* ── BLOCKS ── */
 .block{position:relative;margin:1px 0;border-radius:var(--rsm)}
@@ -432,6 +443,7 @@ input,textarea,select{font-family:inherit}
     </div>
     <button class="tbtn" onclick="triggerNotionImport()" id="btnImport" style="display:none">📥 匯入 Notion</button>
     <input type="file" id="notionImportInput" accept=".md,.markdown,.zip" style="display:none" onchange="importNotion(this)">
+    <input type="file" id="coverInput" accept="image/*" style="display:none" onchange="onCoverUpload(this)">
     <button class="tbtn" onclick="openChangelog()" id="btnChangelog" style="display:none">📋 更新日誌</button>
     <button class="tbtn" onclick="openSettings()" id="btnSettings">⚙ 設定</button>
     <button class="tbtn on" onclick="toggleMode()" id="modeBtn" style="display:none">✏️ 編輯中</button>
@@ -968,7 +980,8 @@ function renderTabs() {
   docs.forEach(d => {
     const el = document.createElement('div');
     el.className = 'doc-tab' + (d.id===activeId?' active':'');
-    el.innerHTML = `<span>${d.name}</span>${canManageDocs()?`<span class="tx" onclick="closeTab(event,${d.id})">✕</span>`:''}`;
+    const thumb = d.cover ? `<img class="doc-tab-thumb" src="${d.cover}" alt="">` : '';
+    el.innerHTML = `${thumb}<span>${d.name}</span>${canManageDocs()?`<span class="tx" onclick="closeTab(event,${d.id})">✕</span>`:''}`;
     el.onclick = e => { if (!e.target.classList.contains('tx')) switchDoc(d.id); };
     wrap.appendChild(el);
   });
@@ -1014,12 +1027,66 @@ function getDoc() { return docs.find(d=>d.id===activeId); }
 
 function renderDoc() {
   const doc = getDoc();
+  renderCover(doc);
   document.getElementById('docTitle').value = doc.name;
   document.getElementById('docTitle').readOnly = !editMode||!canEdit();
   const cont = document.getElementById('blocks');
   cont.innerHTML = '';
   doc.blocks.forEach(b => cont.appendChild(makeBlock(b)));
   renderOutline(); updateWordCount();
+}
+
+function renderCover(doc) {
+  const editor = document.getElementById('editor');
+  let area = document.getElementById('coverArea');
+  if (area) area.remove();
+  area = document.createElement('div');
+  area.id = 'coverArea';
+  editor.insertBefore(area, editor.firstChild);
+  const T = L();
+  const addLabel = lang==='en' ? '🖼 Add cover' : '🖼 新增封面';
+  const changeLabel = lang==='en' ? '📷 Change' : '📷 更換';
+  const removeLabel = lang==='en' ? '✕ Remove' : '✕ 移除';
+  if (doc.cover) {
+    area.className = 'doc-cover-wrap';
+    area.innerHTML = `<img src="${doc.cover}" alt="cover">`;
+    if (editMode && canEdit()) {
+      const acts = document.createElement('div');
+      acts.className = 'doc-cover-acts';
+      acts.innerHTML = `<button class="doc-cover-btn" onclick="triggerCoverUpload()">${changeLabel}</button>
+                        <button class="doc-cover-btn" onclick="removeCover()">${removeLabel}</button>`;
+      area.appendChild(acts);
+    }
+  } else if (editMode && canEdit()) {
+    area.className = 'doc-add-cover';
+    const btn = document.createElement('button');
+    btn.className = 'doc-add-cover-btn';
+    btn.textContent = addLabel;
+    btn.onclick = triggerCoverUpload;
+    area.appendChild(btn);
+  }
+}
+
+function triggerCoverUpload() {
+  document.getElementById('coverInput').value = '';
+  document.getElementById('coverInput').click();
+}
+
+function onCoverUpload(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const doc = getDoc(); if (!doc) return;
+    doc.cover = e.target.result;
+    renderDoc(); save();
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeCover() {
+  const doc = getDoc(); if (!doc) return;
+  doc.cover = null;
+  renderDoc(); save();
 }
 
 function onTitleInput() {
