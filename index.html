@@ -113,8 +113,8 @@ input,textarea,select{font-family:inherit}
 
 /* lists */
 .blist-row{display:flex;gap:8px;align-items:flex-start;padding:2px 0;font-size:15px;line-height:1.7}
-.blist-row .bul{flex-shrink:0;width:20px;text-align:center;margin-top:2px;color:var(--text2);font-size:14px}
-.blist-row .bul.num{font-size:13px;color:var(--text3)}
+.blist-row .bul{flex-shrink:0;width:20px;text-align:center;margin-top:2px;color:var(--text);font-size:14px}
+.blist-row .bul.num{font-size:13px;color:var(--text)}
 .bchk{width:16px;height:16px;border:1.5px solid var(--border2);border-radius:4px;flex-shrink:0;margin-top:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s}
 .bchk:hover{border-color:var(--accent)}
 .bchk.done{background:var(--accent);border-color:var(--accent)}
@@ -129,7 +129,7 @@ input,textarea,select{font-family:inherit}
 .bcol-head:hover{background:rgba(0,0,0,.03)}
 
 /* Arrow: size matches title, sits inline */
-.bcol-arrow{display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text2)}
+.bcol-arrow{display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text)}
 .bcol-arrow svg{transition:transform .2s;display:block}
 .bcol-wrap.open .bcol-arrow svg{transform:rotate(90deg)}
 
@@ -238,7 +238,7 @@ input,textarea,select{font-family:inherit}
 .tl-item{position:relative}
 .tl-row{display:flex;align-items:flex-start;min-height:30px;border-radius:4px;transition:background .1s}
 .tl-row:hover{background:var(--bg2)}
-.tl-arrow{width:24px;height:30px;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;user-select:none;color:var(--text3);border-radius:4px;transition:.12s}
+.tl-arrow{width:24px;height:30px;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;user-select:none;color:var(--text);border-radius:4px;transition:.12s}
 .tl-arrow:hover{background:var(--bg3);color:var(--text)}
 .tl-arrow svg{transition:transform .2s;flex-shrink:0}
 .tl-arrow.open svg{transform:rotate(90deg)}
@@ -1192,11 +1192,6 @@ function makeOrdered(b) {
     } else text.innerHTML=item;
     row.appendChild(num); row.appendChild(text); wrap.appendChild(row);
   });
-  if (editMode&&canEdit()) {
-    const btn=document.createElement('button'); btn.style.cssText='font-size:12px;color:var(--text3);margin-left:28px;margin-top:3px;padding:2px 6px;border-radius:3px';
-    btn.textContent=L().addItem; btn.onclick=()=>{b.items=b.items||[];b.items.push('');renderDoc();};
-    wrap.appendChild(btn);
-  }
   return wrap;
 }
 
@@ -1223,11 +1218,6 @@ function makeChecklist(b) {
     } else text.innerHTML=item.text||'';
     row.appendChild(chk); row.appendChild(text); wrap.appendChild(row);
   });
-  if (editMode&&canEdit()) {
-    const btn=document.createElement('button'); btn.style.cssText='font-size:12px;color:var(--text3);margin-left:28px;margin-top:3px;padding:2px 6px;border-radius:3px';
-    btn.textContent=T.addItem; btn.onclick=()=>{b.items=b.items||[];b.items.push({text:'',done:false});renderDoc();};
-    wrap.appendChild(btn);
-  }
   return wrap;
 }
 
@@ -1666,23 +1656,7 @@ function makeToggleList(b) {
       text.innerHTML = item.text || '';
     }
 
-    // Add-child button (visible on row hover)
-    if (editMode && canEdit()) {
-      const addChild = document.createElement('button');
-      addChild.className = 'tl-addchild';
-      addChild.textContent = '+';
-      addChild.title = T.addBlock;
-      addChild.onclick = e => {
-        e.stopPropagation();
-        item.children = item.children || [];
-        item.open = true;
-        item.children.push({ id: Date.now(), text: '', open: false, children: [] });
-        renderDoc(); save();
-      };
-      row.appendChild(arrow); row.appendChild(text); row.appendChild(addChild);
-    } else {
-      row.appendChild(arrow); row.appendChild(text);
-    }
+    row.appendChild(arrow); row.appendChild(text);
 
     // Render children recursively
     (item.children || []).forEach(child => childrenDiv.appendChild(renderItem(child, item.children, depth + 1)));
@@ -1694,17 +1668,6 @@ function makeToggleList(b) {
 
   (b.items || []).forEach(item => root.appendChild(renderItem(item, b.items, 0)));
 
-  if (editMode && canEdit()) {
-    const addRow = document.createElement('button');
-    addRow.className = 'tl-addrow';
-    addRow.textContent = T.addItem;
-    addRow.onclick = () => {
-      b.items = b.items || [];
-      b.items.push({ id: Date.now(), text: '', open: false, children: [] });
-      renderDoc(); save();
-    };
-    root.appendChild(addRow);
-  }
   return root;
 }
 
