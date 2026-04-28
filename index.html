@@ -848,6 +848,7 @@ function renderLogin() {
   // update back/login btn labels
   setText('loginBack', lang==='en'?'← Back':'← 返回');
   setText('loginEnter', lang==='en'?'Sign in':'登入');
+  const pwEl=document.getElementById('pwInput'); if(pwEl) pwEl.placeholder=lang==='en'?'Enter password':'輸入密碼';
 }
 
 function selectUser(uid) {
