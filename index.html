@@ -840,10 +840,9 @@ function renderLogin() {
   loginPendingId=null;
   const list = document.getElementById('loginList');
   list.innerHTML = FIXED_USERS.map(u => {
-    const rl = {admin:T.roleAdminFull, editor:T.roleEditor, viewer:T.roleViewer}[u.role];
     return `<button class="lu-btn" onclick="selectUser(${u.id})">
       <div class="uav" style="width:36px;height:36px;font-size:14px;background:${u.color}">${u.name[0]}</div>
-      <div><div style="font-weight:500">${u.name}</div><div style="font-size:12px;color:var(--text3)">${rl}</div></div>
+      <div><div style="font-weight:500">${u.name}</div></div>
     </button>`;
   }).join('');
   // update back/login btn labels
