@@ -381,7 +381,10 @@ input,textarea,select{font-family:inherit}
   <div class="login-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
       <h2 id="loginTitle">📋 SOP Template</h2>
-      <button onclick="toggleLang()" style="font-size:12px;padding:4px 12px;border-radius:20px;border:1px solid var(--border);color:var(--text2);background:var(--bg2);cursor:pointer" id="loginLangBtn">English</button>
+      <div style="display:flex;gap:4px">
+        <button onclick="setLang('en')" id="langBtnEn" style="font-size:12px;padding:4px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-family:inherit;transition:.15s">English</button>
+        <button onclick="setLang('zh-TW')" id="langBtnZh" style="font-size:12px;padding:4px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-family:inherit;transition:.15s">繁中</button>
+      </div>
     </div>
     <p id="loginSub" style="margin-bottom:20px">請選擇帳號並輸入密碼</p>
     <!-- Step 1: pick user -->
@@ -432,7 +435,7 @@ input,textarea,select{font-family:inherit}
     <button class="tbtn" onclick="openChangelog()" id="btnChangelog" style="display:none">📋 更新日誌</button>
     <button class="tbtn" onclick="openSettings()" id="btnSettings">⚙ 設定</button>
     <button class="tbtn on" onclick="toggleMode()" id="modeBtn" style="display:none">✏️ 編輯中</button>
-    <button class="tbtn" onclick="forceSave()" id="btnSave" style="display:none;font-size:15px;padding:5px 10px" title="Force save to cloud">💾</button>
+    <button class="tbtn" onclick="forceSave()" id="btnSave" style="display:none" title="Force save to cloud">💾 Save</button>
   </div>
 </div>
 
@@ -783,7 +786,16 @@ function applyLang() {
   const T = L();
   // login
   setText('loginTitle', T.loginTitle); setText('loginSub', T.loginSub);
-  setText('loginLangBtn', T.loginLangBtn);
+  // 語言按鈕 active 狀態
+  ['en','zh-TW'].forEach(l=>{
+    const btn=document.getElementById(l==='en'?'langBtnEn':'langBtnZh'); if(!btn)return;
+    const on=lang===l;
+    btn.style.background=on?'var(--text)':'var(--bg2)';
+    btn.style.color=on?'#fff':'var(--text2)';
+    btn.style.borderColor=on?'var(--text)':'var(--border)';
+  });
+  // 存檔按鈕文字
+  const sb=document.getElementById('btnSave'); if(sb&&!sb.disabled) sb.textContent=lang==='en'?'💾 Save':'💾 存檔';
   // topbar
   setText('btnNew', T.addDoc);
   document.getElementById('searchHint').innerHTML = T.searchHint + ' <kbd style="font-size:11px;background:var(--bg3);padding:1px 5px;border-radius:3px;border:1px solid var(--border2)">Ctrl K</kbd>';
@@ -2602,7 +2614,8 @@ function forceSave(){
   const done=()=>{
     setText('stext',L().saved);
     document.getElementById('sdot').style.background='#22c55e';
-    if(btn){btn.style.opacity='';btn.disabled=false;btn.textContent='✓';setTimeout(()=>{if(btn)btn.textContent='💾';},1500);}
+    const saveLabel=lang==='en'?'💾 Save':'💾 存檔';
+    if(btn){btn.style.opacity='';btn.disabled=false;btn.textContent='✓';setTimeout(()=>{if(btn)btn.textContent=saveLabel;},1500);}
   };
   if(window.fbDb) window.fbDb.ref('sop_docs').set(docs).then(done).catch(done);
   else done();
