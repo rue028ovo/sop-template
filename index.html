@@ -77,7 +77,7 @@ input,textarea,select{font-family:inherit}
 .doc-cover-wrap{margin:-48px -64px 32px;position:relative;background:var(--bg3)}
 .doc-cover-wrap img{width:100%;height:220px;object-fit:cover;display:block}
 .doc-cover-acts{position:absolute;bottom:10px;right:14px;display:flex;gap:6px;opacity:0;transition:.2s}
-.doc-cover-wrap:hover .doc-cover-acts{opacity:1}
+.doc-cover-wrap:hover .doc-cover-acts,.doc-cover-emoji:hover .doc-cover-acts{opacity:1}
 .doc-cover-btn{font-size:12px;padding:4px 12px;border-radius:20px;background:rgba(255,255,255,.92);border:1px solid rgba(0,0,0,.1);cursor:pointer;font-family:inherit;color:var(--text);backdrop-filter:blur(4px)}
 .doc-cover-btn:hover{background:#fff}
 .doc-add-cover{margin:-48px -64px 0;height:52px;display:flex;align-items:flex-end;padding-bottom:6px;padding-left:12px}
@@ -383,6 +383,34 @@ input,textarea,select{font-family:inherit}
 .lang-card{flex:1;padding:14px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;text-align:center;cursor:pointer;transition:.15s;background:#fff}
 .lang-card:hover{border-color:var(--accent-bg);background:var(--accent-bg)}
 .lang-card.sel{border-color:var(--accent);background:var(--accent-bg)}
+
+/* ── COVER PICKER ── */
+.cp-modal{background:#fff;border-radius:12px;padding:0;box-shadow:var(--shadow);border:1px solid var(--border);width:440px;max-height:520px;display:flex;flex-direction:column;overflow:hidden}
+.cp-head{padding:16px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.cp-head h3{font-size:15px;font-weight:600}
+.cp-tabs{display:flex;gap:2px;padding:12px 20px 0;border-bottom:1px solid var(--border);flex-shrink:0}
+.cp-tab{font-size:13px;padding:6px 14px;border-radius:var(--rsm) var(--rsm) 0 0;cursor:pointer;color:var(--text2);border:1px solid transparent;border-bottom:none;transition:.12s;margin-bottom:-1px;background:#fff}
+.cp-tab:hover{color:var(--text);background:var(--bg2)}
+.cp-tab.on{color:var(--text);font-weight:500;border-color:var(--border);background:#fff}
+.cp-body{flex:1;overflow-y:auto;padding:16px 20px}
+.cp-search{width:100%;padding:7px 12px;border:1px solid var(--border2);border-radius:var(--rsm);font-size:13px;font-family:inherit;outline:none;margin-bottom:12px;color:var(--text);transition:.15s}
+.cp-search:focus{border-color:var(--accent)}
+.cp-cat-label{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.04em;text-transform:uppercase;margin:10px 0 5px}
+.cp-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;margin-bottom:8px}
+.cp-emoji{width:38px;height:38px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;transition:.1s;border:2px solid transparent;line-height:1}
+.cp-emoji:hover{background:var(--bg2);border-color:var(--border)}
+.cp-emoji.selected{background:var(--accent-bg);border-color:var(--accent)}
+.cp-upload-area{border:2px dashed var(--border2);border-radius:var(--radius);padding:40px 20px;text-align:center;cursor:pointer;transition:.15s;margin-top:8px}
+.cp-upload-area:hover{border-color:var(--accent);background:var(--accent-bg)}
+.cp-upload-area .cp-up-icon{font-size:36px;margin-bottom:8px}
+.cp-upload-area p{font-size:13px;color:var(--text2);margin-bottom:4px}
+.cp-upload-area small{font-size:11px;color:var(--text3)}
+.cp-preview{display:flex;align-items:center;gap:12px;background:var(--bg2);border-radius:var(--rsm);padding:10px 14px;margin-bottom:12px;border:1px solid var(--border)}
+.cp-preview-cover{width:60px;height:40px;border-radius:4px;object-fit:cover;border:1px solid var(--border)}
+.cp-preview-label{font-size:12px;color:var(--text2)}
+/* emoji cover display */
+.doc-cover-emoji{margin:-48px -64px 32px;height:220px;display:flex;align-items:center;justify-content:center;font-size:130px;position:relative;line-height:1;user-select:none}
+.doc-tab-thumb-emoji{width:20px;height:20px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:var(--bg2);line-height:1}
 </style>
 </head>
 <body>
@@ -599,6 +627,25 @@ input,textarea,select{font-family:inherit}
     <div class="mbtns"><button class="tbtn" onclick="closeSettings()" id="stClose">關閉</button></div>
   </div>
 </div>
+
+<!-- COVER PICKER MODAL -->
+<div class="modal-bg" id="coverPickerModal" onclick="if(event.target===this)closeCoverPicker()">
+  <div class="cp-modal">
+    <div class="cp-head">
+      <h3 id="cpTitle">封面設定</h3>
+      <button onclick="closeCoverPicker()" style="color:var(--text3);font-size:20px;line-height:1;border:none;background:none;cursor:pointer">✕</button>
+    </div>
+    <div class="cp-tabs">
+      <div class="cp-tab on" id="cpTabEmoji" onclick="switchCoverTab('emoji')">表情符號</div>
+      <div class="cp-tab" id="cpTabUpload" onclick="switchCoverTab('upload')">上傳</div>
+      <div class="cp-tab" id="cpTabRemove" onclick="removeCoverFromPicker()" style="margin-left:auto;color:#dc2626">移除</div>
+    </div>
+    <div class="cp-body" id="cpBody">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+<input type="file" id="cpFileInput" accept="image/*" style="display:none" onchange="onCoverPickerUpload(this)">
 
 <!-- single global file input for all image uploads -->
 <input type="file" id="imgInput" accept="image/*" style="position:fixed;left:-9999px;opacity:0;pointer-events:none" multiple>
@@ -831,6 +878,11 @@ function applyLang() {
   setText('ndCancel', T.cancelBtn); setText('ndCreate', T.createBtn);
   setText('stTitle', T.stTitle); setText('stLangLabel', T.stLangLabel);
   setText('stClose', T.closeBtn);
+  // cover picker
+  setText('cpTitle', lang==='en'?'Cover':'封面設定');
+  setText('cpTabEmoji', lang==='en'?'Emoji':'表情符號');
+  setText('cpTabUpload', lang==='en'?'Upload':'上傳');
+  setText('cpTabRemove', lang==='en'?'Remove':'移除');
   // search
   document.getElementById('sinput').placeholder = T.searchPH;
   // lock
@@ -980,7 +1032,16 @@ function renderTabs() {
   docs.forEach(d => {
     const el = document.createElement('div');
     el.className = 'doc-tab' + (d.id===activeId?' active':'');
-    const thumb = d.cover ? `<img class="doc-tab-thumb" src="${d.cover}" alt="">` : '';
+    let thumb = '';
+    if (d.cover) {
+      if (typeof d.cover === 'string') {
+        thumb = `<img class="doc-tab-thumb" src="${d.cover}" alt="">`;
+      } else if (d.cover.type === 'emoji') {
+        thumb = `<span class="doc-tab-thumb-emoji">${d.cover.value}</span>`;
+      } else if (d.cover.type === 'image') {
+        thumb = `<img class="doc-tab-thumb" src="${d.cover.src}" alt="">`;
+      }
+    }
     el.innerHTML = `${thumb}<span>${d.name}</span>${canManageDocs()?`<span class="tx" onclick="closeTab(event,${d.id})">✕</span>`:''}`;
     el.onclick = e => { if (!e.target.classList.contains('tx')) switchDoc(d.id); };
     wrap.appendChild(el);
@@ -1036,6 +1097,18 @@ function renderDoc() {
   renderOutline(); updateWordCount();
 }
 
+function getCoverSrc(cover) {
+  // cover can be old string (base64) or new object {type:'emoji',value:'🌟'} / {type:'image',src:'...'}
+  if (!cover) return null;
+  if (typeof cover === 'string') return cover; // legacy base64
+  if (cover.type === 'image') return cover.src;
+  return null; // emoji handled separately
+}
+
+function isCoverEmoji(cover) {
+  return cover && typeof cover === 'object' && cover.type === 'emoji';
+}
+
 function renderCover(doc) {
   const editor = document.getElementById('editor');
   let area = document.getElementById('coverArea');
@@ -1043,17 +1116,34 @@ function renderCover(doc) {
   area = document.createElement('div');
   area.id = 'coverArea';
   editor.insertBefore(area, editor.firstChild);
-  const T = L();
   const addLabel = lang==='en' ? '🖼 Add cover' : '🖼 新增封面';
   const changeLabel = lang==='en' ? '📷 Change' : '📷 更換';
   const removeLabel = lang==='en' ? '✕ Remove' : '✕ 移除';
-  if (doc.cover) {
-    area.className = 'doc-cover-wrap';
-    area.innerHTML = `<img src="${doc.cover}" alt="cover">`;
+  const cover = doc.cover;
+  const imgSrc = getCoverSrc(cover);
+  const isEmoji = isCoverEmoji(cover);
+
+  if (isEmoji) {
+    // Emoji cover: big centered emoji on gradient background
+    const bgColor = cover.bg || '#e0e7ff';
+    area.className = 'doc-cover-emoji';
+    area.style.background = bgColor;
+    area.innerHTML = `<span style="filter:drop-shadow(0 4px 16px rgba(0,0,0,.15))">${cover.value}</span>`;
     if (editMode && canEdit()) {
       const acts = document.createElement('div');
       acts.className = 'doc-cover-acts';
-      acts.innerHTML = `<button class="doc-cover-btn" onclick="triggerCoverUpload()">${changeLabel}</button>
+      acts.style.display = 'flex';
+      acts.innerHTML = `<button class="doc-cover-btn" onclick="openCoverPicker()">${changeLabel}</button>
+                        <button class="doc-cover-btn" onclick="removeCover()">${removeLabel}</button>`;
+      area.appendChild(acts);
+    }
+  } else if (imgSrc) {
+    area.className = 'doc-cover-wrap';
+    area.innerHTML = `<img src="${imgSrc}" alt="cover">`;
+    if (editMode && canEdit()) {
+      const acts = document.createElement('div');
+      acts.className = 'doc-cover-acts';
+      acts.innerHTML = `<button class="doc-cover-btn" onclick="openCoverPicker()">${changeLabel}</button>
                         <button class="doc-cover-btn" onclick="removeCover()">${removeLabel}</button>`;
       area.appendChild(acts);
     }
@@ -1062,31 +1152,147 @@ function renderCover(doc) {
     const btn = document.createElement('button');
     btn.className = 'doc-add-cover-btn';
     btn.textContent = addLabel;
-    btn.onclick = triggerCoverUpload;
+    btn.onclick = openCoverPicker;
     area.appendChild(btn);
   }
 }
 
-function triggerCoverUpload() {
-  document.getElementById('coverInput').value = '';
-  document.getElementById('coverInput').click();
+function openCoverPicker() {
+  document.getElementById('coverPickerModal').classList.add('show');
+  switchCoverTab('emoji');
 }
+
+function closeCoverPicker() {
+  document.getElementById('coverPickerModal').classList.remove('show');
+}
+
+function switchCoverTab(tab) {
+  document.getElementById('cpTabEmoji').classList.toggle('on', tab==='emoji');
+  document.getElementById('cpTabUpload').classList.toggle('on', tab==='upload');
+  const body = document.getElementById('cpBody');
+  if (tab === 'emoji') {
+    renderEmojiTab(body);
+  } else {
+    renderUploadTab(body);
+  }
+}
+
+// Legacy: kept for old coverInput references (redirect to picker)
+function triggerCoverUpload() { openCoverPicker(); }
 
 function onCoverUpload(input) {
   const file = input.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
     const doc = getDoc(); if (!doc) return;
-    doc.cover = e.target.result;
-    renderDoc(); save();
+    doc.cover = { type:'image', src: e.target.result };
+    renderDoc(); save(); closeCoverPicker();
   };
   reader.readAsDataURL(file);
+}
+
+function onCoverPickerUpload(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const doc = getDoc(); if (!doc) return;
+    doc.cover = { type:'image', src: e.target.result };
+    renderDoc(); save(); closeCoverPicker();
+    input.value = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeCoverFromPicker() {
+  removeCover(); closeCoverPicker();
 }
 
 function removeCover() {
   const doc = getDoc(); if (!doc) return;
   doc.cover = null;
   renderDoc(); save();
+}
+
+function setEmojiCover(emoji, bg) {
+  const doc = getDoc(); if (!doc) return;
+  doc.cover = { type:'emoji', value: emoji, bg: bg || pickEmojiGradient(emoji) };
+  renderDoc(); save(); closeCoverPicker();
+}
+
+// Pick a pleasant gradient bg based on emoji code
+function pickEmojiGradient(emoji) {
+  const palettes = ['#fce7f3','#ede9fe','#dbeafe','#dcfce7','#fef9c3','#ffedd5','#e0f2fe','#f0fdf4','#fdf4ff'];
+  let code = 0;
+  for (let i=0;i<emoji.length;i++) code += emoji.codePointAt(i)||0;
+  return palettes[code % palettes.length];
+}
+
+// ── EMOJI DATA ──
+const EMOJI_DATA = [
+  { cat:'😀 Smileys', emojis:['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','😓','🤗','🤔','🤭','🤫','🤥','😶','😐','😑','😬','🙄','😯','😦','😧','😮','😲','🥱','😴','🤤','😪','😵','🤐','🥴','🤢','🤮','🤧','😷','🤒','🤕','🤑','🤠','😈','👿','👹','👺','🤡','💩','👻','💀','☠️','👽','👾','🤖','🎃','😺','😸','😹','😻','😼','😽','🙀','😿','😾'] },
+  { cat:'❤️ Hearts & Symbols', emojis:['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☯️','🕉️','✡️','🔯','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🔕','🔇','🔔','🔔'] },
+  { cat:'🎉 Activities', emojis:['🎉','🎊','🎈','🎁','🎀','🎗️','🎟️','🎫','🏆','🥇','🥈','🥉','🏅','🎖️','🏵️','🎗️','🎭','🎨','🎬','🎤','🎧','🎼','🎵','🎶','🎹','🥁','🎷','🎺','🎸','🪕','🎻','🎲','♟️','🎯','🎳','🎮','🕹️','🎰','🧩','🧸','♠️','♥️','♦️','♣️','🃏','🀄','🎴','🎭','🖼️','🎪','🎢','🎡','🎠'] },
+  { cat:'🌟 Nature', emojis:['🌟','⭐','🌙','☀️','🌤️','⛅','🌥️','☁️','🌦️','🌧️','⛈️','🌩️','🌨️','❄️','☃️','⛄','🌬️','💨','🌪️','🌫️','🌈','☔','⚡','🔥','💧','🌊','🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐕‍🦺','🐈','🐈‍⬛','🐓','🦃','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦦','🦥','🐁','🐀','🦔'] },
+  { cat:'🌿 Plants', emojis:['🌵','🎄','🌲','🌳','🌴','🌱','🌿','☘️','🍀','🎍','🎋','🍃','🍂','🍁','🍄','🌾','💐','🌷','🌹','🥀','🌺','🌸','🌼','🌻','🌞','🌝','🌛','🌜','🌚','🌕','🌖','🌗','🌘','🌑','🌒','🌓','🌔','🌙','🌟','⭐','🌠','🌌','☁️','⛅','🌤️','🔥','💧','🌊','🌀','🌈','⚡','❄️','☃️','⛄','🌬️','💨','🌪️','🌫️','🌂','☂️','☔','⛱️','⚡','🔥','🌋','🏔️','⛰️','🗻','🏕️','🏖️','🏜️','🏝️','🏞️'] },
+  { cat:'🍕 Food', emojis:['🍕','🍔','🌮','🌯','🥗','🥘','🫕','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍘','🍥','🥮','🍢','🧆','🥚','🍳','🥘','🍲','🫕','🧇','🥞','🧈','🍞','🥐','🥖','🫓','🥨','🥯','🧀','🥩','🥓','🍗','🍖','🦴','🌭','🥪','🥙','🧆','🥚','🍳','🥘','🥗','🥫','🍱','🍘','🍙','🍚','🍛','🍜','🍝','🍠','🦞','🦐','🦑','🦀','🦈','🐙','🦪','🍣','🍤','🍙','🧁','🎂','🍰','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🍦','🍧','🍨','🍡','🧃','🥤','🧋','🍵','☕','🫖','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🧉','🍾','🧊','🥄','🍴','🍽️','🥢'] },
+  { cat:'✈️ Travel', emojis:['✈️','🚀','🛸','🚁','🛺','🚂','🚃','🚄','🚅','🚆','🚇','🚈','🚉','🚊','🚝','🚞','🚋','🚌','🚍','🚎','🏎️','🚑','🚒','🚓','🚕','🚗','🚙','🛻','🚚','🚛','🚜','🛵','🏍️','🛺','🚲','🛴','🛹','🛼','🚏','🛣️','🛤️','🚦','🚥','⛽','🗺️','🧭','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🏞️','🏟️','🏛️','🏗️','🏘️','🏚️','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩️','🕋','⛲','⛺','🌁','🌃','🏙️','🌄','🌅','🌆','🌇','🌉','🌌','🌠','🎇','🎆','🗾','🏔️'] },
+  { cat:'💼 Objects', emojis:['💼','📁','📂','🗂️','📋','📊','📈','📉','🗒️','🗓️','📆','📅','🗑️','📇','📌','📍','✂️','🖇️','📎','🖊️','✏️','🖋️','📝','🔍','🔎','🔐','🔑','🗝️','🔨','🪓','⛏️','⚒️','🛠️','🗡️','⚔️','🔫','🏹','🛡️','🪚','🔧','🪛','🔩','⚙️','🗜️','⚖️','🦯','🔗','⛓️','🪝','🧲','🪜','🧰','🪤','🧸','⚗️','🔭','🔬','🩺','💊','🩹','🩻','🩼','🧬','🦠','🧫','🧪','🌡️','🧹','🪣','🧺','🧻','🪠','🧼','🪤','🧽','🧴','🧷','🪡','🧵','🧶','📿','💎','👑','🎩','🪖','👒','🎓','🧢','⛑️','👔','👕','👖','🧣','🧤','🧥','🥻','🩱','👗','👘','🥿','👠','👡','👢','👞','👟','🥾','🧦','👙','🩴','👚','🩲','🩳','👛','👜','💍','💄','💋','💅','🪮','🧴','🪥','🧸'] },
+  { cat:'🏳️ Flags', emojis:['🏳️','🏴','🚩','🏁','🏳️‍🌈','🏳️‍⚧️','🏴‍☠️','🇦🇫','🇦🇱','🇩🇿','🇦🇩','🇦🇴','🇦🇷','🇦🇲','🇦🇺','🇦🇹','🇦🇿','🇧🇸','🇧🇭','🇧🇩','🇧🇧','🇧🇾','🇧🇪','🇧🇿','🇧🇯','🇧🇹','🇧🇴','🇧🇦','🇧🇼','🇧🇷','🇧🇳','🇧🇬','🇧🇫','🇧🇮','🇨🇻','🇰🇭','🇨🇲','🇨🇦','🇨🇫','🇹🇩','🇨🇱','🇨🇳','🇨🇴','🇰🇲','🇨🇬','🇨🇩','🇨🇷','🇨🇮','🇭🇷','🇨🇺','🇨🇾','🇨🇿','🇩🇰','🇩🇯','🇩🇲','🇩🇴','🇪🇨','🇪🇬','🇸🇻','🇬🇶','🇪🇷','🇪🇪','🇸🇿','🇪🇹','🇫🇯','🇫🇮','🇫🇷','🇬🇦','🇬🇲','🇬🇪','🇩🇪','🇬🇭','🇬🇷','🇬🇩','🇬🇹','🇬🇳','🇬🇼','🇬🇾','🇭🇹','🇭🇳','🇭🇺','🇮🇸','🇮🇳','🇮🇩','🇮🇷','🇮🇶','🇮🇪','🇮🇱','🇮🇹','🇯🇲','🇯🇵','🇯🇴','🇰🇿','🇰🇪','🇰🇮','🇰🇵','🇰🇷','🇰🇼','🇰🇬','🇱🇦','🇱🇻','🇱🇧','🇱🇸','🇱🇷','🇱🇾','🇱🇮','🇱🇹','🇱🇺','🇲🇬','🇲🇼','🇲🇾','🇲🇻','🇲🇱','🇲🇹','🇲🇭','🇲🇷','🇲🇺','🇲🇽','🇫🇲','🇲🇩','🇲🇨','🇲🇳','🇲🇪','🇲🇦','🇲🇿','🇲🇲','🇳🇦','🇳🇷','🇳🇵','🇳🇱','🇳🇿','🇳🇮','🇳🇪','🇳🇬','🇳🇴','🇴🇲','🇵🇰','🇵🇼','🇵🇦','🇵🇬','🇵🇾','🇵🇪','🇵🇭','🇵🇱','🇵🇹','🇶🇦','🇷🇴','🇷🇺','🇷🇼','🇰🇳','🇱🇨','🇻🇨','🇼🇸','🇸🇲','🇸🇹','🇸🇦','🇸🇳','🇷🇸','🇸🇱','🇸🇬','🇸🇰','🇸🇮','🇸🇧','🇸🇴','🇿🇦','🇸🇸','🇪🇸','🇱🇰','🇸🇩','🇸🇷','🇸🇪','🇨🇭','🇸🇾','🇹🇼','🇹🇯','🇹🇿','🇹🇭','🇹🇱','🇹🇬','🇹🇴','🇹🇹','🇹🇳','🇹🇷','🇹🇲','🇺🇬','🇺🇦','🇦🇪','🇬🇧','🇺🇸','🇺🇾','🇺🇿','🇻🇺','🇻🇪','🇻🇳','🇾🇪','🇿🇲','🇿🇼'] },
+];
+
+let _cpEmojiSearch = '';
+
+function renderEmojiTab(body) {
+  _cpEmojiSearch = '';
+  const currentCover = getDoc()?.cover;
+  const currentEmoji = (currentCover && typeof currentCover==='object' && currentCover.type==='emoji') ? currentCover.value : null;
+  body.innerHTML = `
+    <input class="cp-search" placeholder="${lang==='en'?'Search emoji...':'搜尋表情符號...'}" id="cpEmojiSearch" oninput="filterEmojiGrid(this.value)" autocomplete="off">
+    <div id="cpEmojiGrid"></div>
+  `;
+  renderEmojiGrid(currentEmoji, '');
+  setTimeout(()=>{ const s=document.getElementById('cpEmojiSearch'); if(s) s.focus(); }, 50);
+}
+
+function renderEmojiGrid(selectedEmoji, filter) {
+  const grid = document.getElementById('cpEmojiGrid');
+  if (!grid) return;
+  filter = (filter||'').toLowerCase();
+  let html = '';
+  for (const cat of EMOJI_DATA) {
+    const filtered = filter ? cat.emojis.filter(e => e.includes(filter) || cat.cat.toLowerCase().includes(filter)) : cat.emojis;
+    if (!filtered.length) continue;
+    html += `<div class="cp-cat-label">${cat.cat}</div><div class="cp-grid">`;
+    for (const em of filtered) {
+      html += `<div class="cp-emoji${em===selectedEmoji?' selected':''}" onclick="setEmojiCover('${em.replace(/'/g,"&#39;")}')" title="${em}">${em}</div>`;
+    }
+    html += '</div>';
+  }
+  grid.innerHTML = html || `<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">${lang==='en'?'No emoji found':'找不到表情符號'}</div>`;
+}
+
+function filterEmojiGrid(val) {
+  _cpEmojiSearch = val;
+  const currentCover = getDoc()?.cover;
+  const currentEmoji = (currentCover && typeof currentCover==='object' && currentCover.type==='emoji') ? currentCover.value : null;
+  renderEmojiGrid(currentEmoji, val);
+}
+
+function renderUploadTab(body) {
+  const currentCover = getDoc()?.cover;
+  const imgSrc = getCoverSrc(currentCover);
+  let previewHtml = '';
+  if (imgSrc) {
+    previewHtml = `<div class="cp-preview"><img class="cp-preview-cover" src="${imgSrc}"><span class="cp-preview-label">${lang==='en'?'Current cover':'目前封面'}</span></div>`;
+  }
+  body.innerHTML = `
+    ${previewHtml}
+    <div class="cp-upload-area" onclick="document.getElementById('cpFileInput').click()">
+      <div class="cp-up-icon">🖼️</div>
+      <p>${lang==='en'?'Click to upload image':'點擊上傳圖片'}</p>
+      <small>JPG、PNG、GIF、WEBP</small>
+    </div>
+  `;
 }
 
 function onTitleInput() {
