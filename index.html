@@ -1100,10 +1100,19 @@ function closeTab(e, id) {
   docs = docs.filter(d=>d.id!==id);
   if (activeId===id) activeId=docs[0].id;
   renderTabs(); renderDoc();
+  // Immediately persist BOTH the updated docs AND trash to Firebase/localStorage
+  persistDocs();
   saveTrash();
   autoLog('deleteDoc', deletedDoc.name);
   // Show undo toast
   showUndoToast(deletedDoc.name, id);
+}
+
+// Immediately write docs to storage (no debounce) — used when doc list changes
+function persistDocs() {
+  if (!docs || !docs.length) return;
+  try { localStorage.setItem('sop_docs', JSON.stringify(docs)); } catch(e) {}
+  if (window.fbDb) window.fbDb.ref('sop_docs').set(docs).catch(() => {});
 }
 
 function newDoc() {
@@ -1122,6 +1131,7 @@ function confirmNewDoc() {
   document.getElementById('newDocModal').classList.remove('show');
   if (!editMode && canEdit()) { editMode=true; updateAccess(); }
   switchDoc(id);
+  persistDocs();
   autoLog('addDoc', name);
   setTimeout(()=>{ const t=document.getElementById('docTitle'); if(t){t.focus();t.select();} },100);
 }
@@ -2646,7 +2656,10 @@ function restoreDoc(idx) {
   docs.push(doc);
   trash.splice(idx, 1);
   activeId = doc.id;
-  saveTrash(); save('addDoc', doc.name);
+  // Immediately persist both docs and trash
+  persistDocs();
+  saveTrash();
+  autoLog('addDoc', doc.name);
   renderTabs(); renderDoc();
   renderTrashModal();
   showToast(lang==='en' ? `"${doc.name}" restored` : `「${doc.name}」已還原`, '↩');
@@ -2877,7 +2890,8 @@ function confirmImport() {
 
   closeImportModal();
   renderTabs(); renderDoc();
-  save('addDoc', name);
+  persistDocs();
+  autoLog('addDoc', name);
 }
 
 function mdInline(text) {
