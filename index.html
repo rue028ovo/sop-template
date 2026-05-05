@@ -3106,7 +3106,12 @@ function setSaveBtnState(state) {
   if (!btn) return;
   const saveLabel = lang==='en' ? '💾 Save' : '💾 存檔';
   if (state === 'saving') {
-    // 保持原樣，不改變外觀，避免誤解為未存檔
+    btn.disabled = true;
+    btn.textContent = lang==='en' ? '⏳ Saving...' : '⏳ 存檔中...';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+    btn.style.opacity = '.6';
   } else if (state === 'done') {
     btn.disabled = false;
     btn.textContent = '✓ ' + (lang==='en' ? 'Saved' : '已存檔');
