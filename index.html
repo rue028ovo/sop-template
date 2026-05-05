@@ -2697,6 +2697,25 @@ function showUndoToast(docName, docId) {
   _undoTimer = setTimeout(() => { toast.style.opacity='0'; setTimeout(()=>{if(toast.parentNode)toast.remove();},300); }, 5000);
 }
 
+let _saveToastTimer = null;
+function showSaveToast() {
+  let toast = document.getElementById('saveToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'saveToast';
+    toast.style.cssText = 'position:fixed;bottom:40px;right:24px;background:#166534;color:#fff;padding:9px 18px;border-radius:24px;font-size:13px;font-weight:500;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:opacity .3s,transform .3s;display:flex;align-items:center;gap:8px;';
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = `<span style="font-size:15px">✓</span><span>${lang==='en'?'Saved':'存檔完成'}</span>`;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateY(0)';
+  if (_saveToastTimer) clearTimeout(_saveToastTimer);
+  _saveToastTimer = setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(8px)';
+  }, 2000);
+}
+
 function showToast(msg, icon) {
   let toast = document.getElementById('genToast');
   if (!toast) {
@@ -3092,6 +3111,7 @@ function save(action, detail){
     document.getElementById('sdot').style.background='#22c55e';
     try{localStorage.setItem('sop_docs',JSON.stringify(docs));}catch(e){}
     if(window.fbDb) window.fbDb.ref('sop_docs').set(docs).catch(()=>{});
+    showSaveToast();
   },800);
 }
 
@@ -3108,6 +3128,7 @@ function forceSave(){
     document.getElementById('sdot').style.background='#22c55e';
     const saveLabel=lang==='en'?'💾 Save':'💾 存檔';
     if(btn){btn.style.opacity='';btn.disabled=false;btn.textContent='✓';setTimeout(()=>{if(btn)btn.textContent=saveLabel;},1500);}
+    showSaveToast();
   };
   if(window.fbDb) window.fbDb.ref('sop_docs').set(docs).then(done).catch(done);
   else done();
