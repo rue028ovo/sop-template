@@ -297,6 +297,14 @@ input,textarea,select{font-family:inherit}
 .cl-diff-del{font-size:13px;color:#b91c1c;background:#fef2f2;border-left:3px solid #fca5a5;padding:3px 8px;border-radius:0 4px 4px 0;margin:2px 0;font-family:inherit;line-height:1.5;word-break:break-word;text-decoration:line-through}
 .cl-diff-info{font-size:12.5px;color:var(--text3);padding:2px 0;font-style:italic}
 
+/* ── DROP ZONE OVERLAY ── */
+.drop-overlay{position:absolute;inset:0;background:rgba(37,99,235,.12);border:3px dashed var(--accent);border-radius:12px;display:none;align-items:center;justify-content:center;z-index:100;pointer-events:none}
+.drop-overlay.show{display:flex}
+.drop-overlay-inner{text-align:center;padding:32px;border-radius:12px;background:rgba(255,255,255,.92);box-shadow:0 4px 24px rgba(0,0,0,.1)}
+.drop-overlay-inner .drop-icon{font-size:48px;margin-bottom:8px}
+.drop-overlay-inner .drop-text{font-size:16px;font-weight:600;color:var(--accent)}
+.drop-overlay-inner .drop-sub{font-size:13px;color:var(--text2);margin-top:4px}
+
 /* colors */
 .tc-gray{color:#78716c}.tc-brown{color:#92400e}.tc-orange{color:#c2410c}
 .tc-yellow{color:#b45309}.tc-green{color:#15803d}.tc-blue{color:#1d4ed8}
@@ -486,7 +494,10 @@ input,textarea,select{font-family:inherit}
       <span style="font-size:10px;color:var(--text3)" id="logoutLabel">登出</span>
     </div>
     <button class="tbtn" onclick="triggerNotionImport()" id="btnImport" style="display:none">📥 匯入 Notion</button>
+    <button class="tbtn" onclick="backupDocs()" id="btnBackup" style="display:none">💾 Backup</button>
+    <button class="tbtn" onclick="triggerRestore()" id="btnRestore" style="display:none">📂 Restore</button>
     <input type="file" id="notionImportInput" accept=".md,.markdown,.zip" style="display:none" onchange="importNotion(this)">
+    <input type="file" id="restoreInput" accept=".json" style="display:none" onchange="restoreDocs(this)">
     <input type="file" id="coverInput" accept="image/*" style="display:none" onchange="onCoverUpload(this)">
     <button class="tbtn" onclick="openChangelog()" id="btnChangelog" style="display:none">📋 更新日誌</button>
     <button class="tbtn" onclick="openTrash()" id="btnTrash" style="display:none">🗑 垃圾桶</button>
@@ -505,7 +516,14 @@ input,textarea,select{font-family:inherit}
     <div class="sb-head" id="outlineLabel">大綱</div>
     <div class="sb-body" id="outlineBody"></div>
   </div>
-  <div class="ew" id="ew">
+  <div class="ew" id="ew" style="position:relative">
+    <div class="drop-overlay" id="dropOverlay">
+      <div class="drop-overlay-inner">
+        <div class="drop-icon">📥</div>
+        <div class="drop-text" id="dropText">Drop Notion file here</div>
+        <div class="drop-sub" id="dropSub">.zip or .md files supported</div>
+      </div>
+    </div>
     <div class="editor" id="editor">
       <input class="doc-title" id="docTitle" placeholder="無標題文件" oninput="onTitleInput()">
       <div id="blocks"></div>
@@ -742,6 +760,10 @@ const I18N = {
     addItem:'+ 新增項目', addBlock:'+ 新增區塊',
     imgUpload:'點擊上傳圖片', imgFmt:'JPG、PNG、GIF、WEBP',
     imgCap:'圖片說明...', imgChange:'更換圖片',
+    backupBtn:'💾 備份', restoreBtn:'📂 還原',
+    dropText:'拖放 Notion 檔案至此', dropSub:'支援 .zip 或 .md 檔案',
+    backupConfirm:'已匯出備份檔案。', restoreConfirm:'確定要還原？這會覆蓋所有現有文件。',
+    restoreInvalid:'無效的備份檔案格式。', restoreDone:'還原完成！',
   },
   'en': {
     loginTitle:'📋 SOP Template', loginSub:'Select your account', loginLangBtn:'繁中',
@@ -795,6 +817,10 @@ const I18N = {
     addItem:'+ Add item', addBlock:'+ Add block',
     imgUpload:'Click to upload', imgFmt:'JPG, PNG, GIF, WEBP',
     imgCap:'Caption...', imgChange:'Change image',
+    backupBtn:'💾 Backup', restoreBtn:'📂 Restore',
+    dropText:'Drop Notion file here', dropSub:'.zip or .md files supported',
+    backupConfirm:'Backup file exported.', restoreConfirm:'Are you sure you want to restore? This will overwrite all existing documents.',
+    restoreInvalid:'Invalid backup file format.', restoreDone:'Restore complete!',
   }
 };
 
@@ -915,6 +941,12 @@ function applyLang() {
   setText('stClose', T.closeBtn);
   // trash button
   setText('btnTrash', lang==='en'?'🗑 Trash':'🗑 垃圾桶');
+  // backup/restore buttons
+  setText('btnBackup', T.backupBtn);
+  setText('btnRestore', T.restoreBtn);
+  // drop overlay
+  setText('dropText', T.dropText);
+  setText('dropSub', T.dropSub);
   // cover picker
   setText('cpTitle', lang==='en'?'Cover':'封面設定');
   setText('cpTabEmoji', lang==='en'?'Emoji':'表情符號');
@@ -1052,6 +1084,10 @@ function updateAccess() {
   if (impBtn) impBtn.style.display = canManageDocs() ? '' : 'none';
   const trashBtn = document.getElementById('btnTrash');
   if (trashBtn) trashBtn.style.display = canManageDocs() ? '' : 'none';
+  const backupBtn = document.getElementById('btnBackup');
+  if (backupBtn) backupBtn.style.display = canManageDocs() ? '' : 'none';
+  const restoreBtn = document.getElementById('btnRestore');
+  if (restoreBtn) restoreBtn.style.display = canManageDocs() ? '' : 'none';
   const saveBtn = document.getElementById('btnSave');
   if (saveBtn) saveBtn.style.display = canEdit() ? '' : 'none';
 }
@@ -2842,14 +2878,18 @@ async function importNotionZip(file) {
     const mdEntries = Object.values(zip.files).filter(f => /\.(md|markdown)$/i.test(f.name) && !f.dir);
     if (!mdEntries.length) { alert('ZIP 中找不到 Markdown 檔案，請確認是 Notion 匯出的 ZIP。'); return; }
 
-    // 所有圖片 → base64 data URI
+    // 所有圖片 → base64 data URI (with compression)
     const imageMap = {};
     const imgEntries = Object.values(zip.files).filter(f => /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name) && !f.dir);
     await Promise.all(imgEntries.map(async entry => {
       const b64 = await entry.async('base64');
       const ext = entry.name.split('.').pop().toLowerCase();
       const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
-      const dataUrl = `data:${mime};base64,${b64}`;
+      let dataUrl = `data:${mime};base64,${b64}`;
+      // Compress images (skip SVG and GIF)
+      if (ext !== 'svg' && ext !== 'gif') {
+        try { dataUrl = await compressImage(dataUrl, 1200, 0.7); } catch(e) {}
+      }
       imageMap[entry.name] = dataUrl;
       try { imageMap[decodeURIComponent(entry.name)] = dataUrl; } catch(e) {}
     }));
@@ -2925,6 +2965,34 @@ function mdInline(text) {
   return s;
 }
 
+function getIndent(line) {
+  const m = line.match(/^(\s*)/);
+  return m ? m[1].replace(/\t/g, '    ').length : 0;
+}
+
+function collectIndentedBlock(lines, start, minIndent) {
+  const collected = [];
+  let j = start;
+  while (j < lines.length) {
+    const line = lines[j];
+    if (line.trim() === '') { collected.push(''); j++; continue; }
+    if (getIndent(line) >= minIndent) {
+      // Strip exactly minIndent spaces worth of leading whitespace
+      let pos = 0, cnt = 0;
+      for (pos = 0; pos < line.length && cnt < minIndent; pos++) {
+        if (line[pos] === ' ') cnt++;
+        else if (line[pos] === '\t') cnt += 4;
+        else break;
+      }
+      collected.push(line.substring(pos));
+      j++;
+    } else break;
+  }
+  // Trim trailing empty lines
+  while (collected.length && collected[collected.length-1].trim() === '') collected.pop();
+  return { lines: collected, end: j };
+}
+
 function parseMarkdown(text, imageMap) {
   imageMap = imageMap || {};
   const blocks = [];
@@ -2987,8 +3055,8 @@ function parseMarkdown(text, imageMap) {
       i++; continue;
     }
 
-    // ── Divider ──
-    if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+    // ── Divider (standard markdown and Notion long dash ——) ──
+    if (/^(-{3,}|\*{3,}|_{3,}|—{3,}|─{3,})$/.test(trimmed)) {
       blocks.push({ id: nextId(), type: 'divider' });
       i++; continue;
     }
@@ -3031,9 +3099,22 @@ function parseMarkdown(text, imageMap) {
       continue;
     }
 
-    // ── Bullet ──
+    // ── Bullet with possible Notion toggle/collapse (4-space indented children) ──
     const bm = trimmed.match(/^[-*+]\s+(.*)/);
     if (bm) {
+      // Look ahead: if next non-empty line is indented by 4+ spaces, treat as collapse block
+      let peekJ = i + 1;
+      while (peekJ < lines.length && lines[peekJ].trim() === '') peekJ++;
+      if (peekJ < lines.length && getIndent(lines[peekJ]) >= 4) {
+        // This is a Notion toggle/collapse pattern
+        const label = mdInline(bm[1]);
+        const result = collectIndentedBlock(lines, i + 1, 4);
+        const childText = result.lines.join('\n');
+        const children = parseMarkdown(childText, imageMap);
+        blocks.push({ id: nextId(), type: 'collapse', label: label, open: false, children: children });
+        i = result.end;
+        continue;
+      }
       blocks.push({ id: nextId(), type: 'bullet', content: mdInline(bm[1]) });
       i++; continue;
     }
@@ -3170,6 +3251,136 @@ function updateWordCount(){
 }
 
 // ═══════════════════════════════════════════════════════════
+// BACKUP / RESTORE
+// ═══════════════════════════════════════════════════════════
+function backupDocs() {
+  if (!canManageDocs()) return;
+  const json = JSON.stringify(docs, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  a.href = url;
+  a.download = `sop-backup-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function triggerRestore() {
+  if (!canManageDocs()) return;
+  const inp = document.getElementById('restoreInput');
+  inp.value = '';
+  inp.click();
+}
+
+function restoreDocs(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data) || !data.length || !data[0].id || !data[0].name || !data[0].blocks) {
+        alert(L().restoreInvalid);
+        return;
+      }
+      if (!confirm(L().restoreConfirm)) return;
+      docs = data;
+      activeId = docs[0].id;
+      persistDocs();
+      renderTabs();
+      renderDoc();
+      alert(L().restoreDone);
+    } catch (err) {
+      alert(L().restoreInvalid);
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ═══════════════════════════════════════════════════════════
+// DRAG & DROP IMPORT
+// ═══════════════════════════════════════════════════════════
+(function setupDropZone() {
+  let dragCounter = 0;
+  const ew = document.getElementById('ew');
+  const overlay = document.getElementById('dropOverlay');
+  if (!ew || !overlay) return;
+
+  ew.addEventListener('dragenter', e => {
+    if (!canEdit()) return;
+    e.preventDefault();
+    dragCounter++;
+    overlay.classList.add('show');
+  });
+  ew.addEventListener('dragover', e => {
+    if (!canEdit()) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  ew.addEventListener('dragleave', e => {
+    dragCounter--;
+    if (dragCounter <= 0) { dragCounter = 0; overlay.classList.remove('show'); }
+  });
+  ew.addEventListener('drop', e => {
+    e.preventDefault();
+    dragCounter = 0;
+    overlay.classList.remove('show');
+    if (!canEdit()) return;
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    if (/\.zip$/i.test(file.name)) {
+      importNotionZip(file);
+    } else if (/\.(md|markdown)$/i.test(file.name)) {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const blocks = parseMarkdown(ev.target.result, {});
+        if (!blocks.length) { alert(lang==='en'?'No convertible content found.':'檔案中沒有可轉換的內容。'); return; }
+        const docName = file.name.replace(/\.(md|markdown)$/i, '') || 'Notion Import';
+        showImportPreview(docName, blocks, file.name);
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════
+// IMAGE COMPRESSION
+// ═══════════════════════════════════════════════════════════
+function compressImage(dataUrl, maxWidth, quality) {
+  maxWidth = maxWidth || 1200;
+  quality = quality || 0.7;
+  return new Promise((resolve) => {
+    // Skip SVGs
+    if (dataUrl.startsWith('data:image/svg')) { resolve(dataUrl); return; }
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      // Use JPEG for opaque images, PNG if source has transparency
+      const isPng = dataUrl.startsWith('data:image/png') || dataUrl.startsWith('data:image/webp');
+      let result;
+      if (isPng) {
+        // Try JPEG first (smaller), fall back to PNG if transparency matters
+        result = canvas.toDataURL('image/jpeg', quality);
+      } else {
+        result = canvas.toDataURL('image/jpeg', quality);
+      }
+      resolve(result);
+    };
+    img.onerror = () => resolve(dataUrl); // fallback to original
+    img.src = dataUrl;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
 // GLOBAL EVENTS
 // ═══════════════════════════════════════════════════════════
 document.addEventListener('keydown',e=>{
@@ -3185,6 +3396,80 @@ document.addEventListener('click',e=>{
   }
   if(!e.target.closest('#itbar'))setTimeout(()=>{if(!window.getSelection().toString())document.getElementById('itbar').classList.remove('show');},100);
 });
+
+// ═══════════════════════════════════════════════════════════
+// TUTORIAL DOC
+// ═══════════════════════════════════════════════════════════
+function ensureTutorialDoc() {
+  const TUTORIAL_NAME = '\u{1F4D6} How to Use This Tool';
+  if (docs.some(d => d.name === TUTORIAL_NAME)) return;
+  const s = Date.now() + 900000;
+  let id = s;
+  const nid = () => id++;
+  const tutorialDoc = {
+    id: s,
+    name: TUTORIAL_NAME,
+    blocks: [
+      { id: nid(), type: 'h1', content: 'How to Use This Tool' },
+      { id: nid(), type: 'text', content: 'Welcome! This is a Notion-like SOP document editor with real-time collaboration via Firebase. Below you will find everything you need to get started.' },
+      { id: nid(), type: 'divider' },
+      { id: nid(), type: 'collapse', label: 'Getting Started', open: false, hl: 'h1', children: [
+        { id: nid(), type: 'h3', content: 'Roles' },
+        { id: nid(), type: 'bullet', content: '<strong>Admin</strong> — Full access: create, edit, delete documents, manage users, import/export, backup/restore.' },
+        { id: nid(), type: 'bullet', content: '<strong>Editor</strong> — Can edit document content but cannot create/delete documents or manage users.' },
+        { id: nid(), type: 'bullet', content: '<strong>Viewer</strong> — Read-only access. Cannot make any changes.' },
+        { id: nid(), type: 'h3', content: 'Logging In' },
+        { id: nid(), type: 'text', content: 'On the login screen, select your account and enter the password. The interface language can be switched between English and Traditional Chinese.' },
+      ]},
+      { id: nid(), type: 'collapse', label: 'Creating & Editing Documents', open: false, hl: 'h1', children: [
+        { id: nid(), type: 'h3', content: 'Creating a New Document' },
+        { id: nid(), type: 'text', content: 'Click the "+ New" button in the top bar (Admin only). Enter a name and click Create.' },
+        { id: nid(), type: 'h3', content: 'Adding Blocks' },
+        { id: nid(), type: 'text', content: 'Click the "+" button that appears on the left side of any block, or type "/" in an empty text block to open the block menu.' },
+        { id: nid(), type: 'h3', content: 'Available Block Types' },
+        { id: nid(), type: 'bullet', content: '<strong>Text</strong> — Plain paragraph' },
+        { id: nid(), type: 'bullet', content: '<strong>Heading 1-4</strong> — Section headings of different sizes' },
+        { id: nid(), type: 'bullet', content: '<strong>Toggle Heading</strong> — Collapsible sections with nested content' },
+        { id: nid(), type: 'bullet', content: '<strong>Bulleted / Numbered List</strong> — Unordered and ordered lists' },
+        { id: nid(), type: 'bullet', content: '<strong>To-do List</strong> — Checkbox items' },
+        { id: nid(), type: 'bullet', content: '<strong>Image</strong> — Upload images (supports carousel and grid views)' },
+        { id: nid(), type: 'bullet', content: '<strong>Code, Quote, Callout, Divider</strong> — Special formatting blocks' },
+        { id: nid(), type: 'h3', content: 'Drag to Reorder' },
+        { id: nid(), type: 'text', content: 'Hover over any block to see the drag handle on the left. Drag it up or down to reorder blocks.' },
+      ]},
+      { id: nid(), type: 'collapse', label: 'Importing from Notion', open: false, hl: 'h1', children: [
+        { id: nid(), type: 'h3', content: 'How to Export from Notion' },
+        { id: nid(), type: 'ordered', items: [
+          'In Notion, click the "..." menu at the top-right of a page.',
+          'Select "Export" and choose "Markdown & CSV" format.',
+          'Check "Include subpages" if needed, then click Export.',
+          'A .zip file will be downloaded.'
+        ]},
+        { id: nid(), type: 'h3', content: 'How to Import' },
+        { id: nid(), type: 'text', content: 'You have two options:' },
+        { id: nid(), type: 'bullet', content: '<strong>Button:</strong> Click the "Import Notion" button in the top bar and select your .zip or .md file.' },
+        { id: nid(), type: 'bullet', content: '<strong>Drag & Drop:</strong> Simply drag a .zip or .md file onto the editor area. A blue overlay will appear to confirm.' },
+        { id: nid(), type: 'text', content: 'Toggle/collapse blocks from Notion (bullet + indented content) are automatically detected and converted.' },
+      ]},
+      { id: nid(), type: 'collapse', label: 'Backup & Restore', open: false, hl: 'h1', children: [
+        { id: nid(), type: 'h3', content: 'Backup' },
+        { id: nid(), type: 'text', content: 'Click the "Backup" button in the top bar (Admin only). This downloads a JSON file containing all your documents. Keep this file safe.' },
+        { id: nid(), type: 'h3', content: 'Restore' },
+        { id: nid(), type: 'text', content: 'Click the "Restore" button and select a previously exported JSON backup file. This will replace all current documents with the backup data. You will be asked to confirm before proceeding.' },
+        { id: nid(), type: 'callout', content: '⚠️ Restore overwrites all existing documents. Make sure to backup first if you have unsaved changes.', bg: 'yellow' },
+      ]},
+      { id: nid(), type: 'collapse', label: 'Tips & Shortcuts', open: false, hl: 'h1', children: [
+        { id: nid(), type: 'bullet', content: '<strong>Ctrl+K</strong> — Open the search dialog to quickly find content across all documents.' },
+        { id: nid(), type: 'bullet', content: '<strong>Outline sidebar</strong> — The left panel shows all headings for quick navigation.' },
+        { id: nid(), type: 'bullet', content: '<strong>Cover images</strong> — Hover at the top of a document to add a cover image or emoji.' },
+        { id: nid(), type: 'bullet', content: '<strong>Inline formatting</strong> — Select text to see the formatting toolbar (bold, italic, strikethrough, code, link).' },
+        { id: nid(), type: 'bullet', content: '<strong>Real-time sync</strong> — Changes are automatically saved and synced to Firebase for all users.' },
+      ]},
+    ]
+  };
+  docs.push(tutorialDoc);
+  persistDocs();
+}
 
 // ═══════════════════════════════════════════════════════════
 // INIT
@@ -3203,6 +3488,7 @@ function init(){
       const fa = toArr(docsSnap.val()); if(fa&&fa.length) docs = fa;
       const ca = toArr(clSnap.val());  if(ca&&ca.length) changelog = ca;
       const ta = toArr(trashSnap.val()); if(ta&&ta.length) trash = ta;
+      ensureTutorialDoc();
       renderLogin();
 
       // 即時監聽其他人的變更
@@ -3222,12 +3508,14 @@ function init(){
       try{const s=localStorage.getItem('sop_docs');if(s)docs=JSON.parse(s);}catch(e){}
       try{const c=localStorage.getItem('sop_changelog');if(c)changelog=JSON.parse(c);}catch(e){}
       try{const t=localStorage.getItem('sop_trash');if(t)trash=JSON.parse(t);}catch(e){}
+      ensureTutorialDoc();
       renderLogin();
     });
   } else {
     try{const s=localStorage.getItem('sop_docs');if(s)docs=JSON.parse(s);}catch(e){}
     try{const c=localStorage.getItem('sop_changelog');if(c)changelog=JSON.parse(c);}catch(e){}
     try{const t=localStorage.getItem('sop_trash');if(t)trash=JSON.parse(t);}catch(e){}
+    ensureTutorialDoc();
     renderLogin();
   }
 }
