@@ -370,6 +370,17 @@ input,textarea,select{font-family:inherit}
 .urow:last-child{border-bottom:none}
 .uav{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;flex-shrink:0}
 
+/* help modal */
+.help-section{margin-bottom:8px;border:1px solid var(--border);border-radius:var(--rsm);overflow:hidden}
+.help-section summary{padding:10px 14px;font-weight:600;font-size:14px;cursor:pointer;background:var(--bg2);list-style:none}
+.help-section summary::before{content:'▸ ';color:var(--text3)}
+.help-section[open] summary::before{content:'▾ '}
+.help-section summary:hover{background:var(--bg3)}
+.help-section>:not(summary){padding:8px 14px 12px;font-size:13px;line-height:1.7}
+.help-section p{margin:4px 0}
+.help-section ul,.help-section ol{margin:4px 0 4px 20px}
+.help-section li{margin:2px 0}
+
 /* statusbar */
 .statusbar{height:26px;display:flex;align-items:center;gap:12px;padding:0 16px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text3);background:#fff;flex-shrink:0}
 .sdot{width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0}
@@ -501,6 +512,7 @@ input,textarea,select{font-family:inherit}
     <input type="file" id="coverInput" accept="image/*" style="display:none" onchange="onCoverUpload(this)">
     <button class="tbtn" onclick="openChangelog()" id="btnChangelog" style="display:none">📋 更新日誌</button>
     <button class="tbtn" onclick="openTrash()" id="btnTrash" style="display:none">🗑 垃圾桶</button>
+    <button class="tbtn" onclick="openHelp()" id="btnHelp">❓ Help</button>
     <button class="tbtn" onclick="openSettings()" id="btnSettings">⚙ 設定</button>
     <button class="tbtn on" onclick="toggleMode()" id="modeBtn" style="display:none">✏️ 編輯中</button>
     <button class="tbtn" onclick="forceSave()" id="btnSave" style="display:none" title="Force save to cloud">💾 Save</button>
@@ -700,6 +712,59 @@ input,textarea,select{font-family:inherit}
 </div>
 <input type="file" id="cpFileInput" accept="image/*" style="display:none" onchange="onCoverPickerUpload(this)">
 
+<!-- HELP MODAL -->
+<div class="modal-bg" id="helpModal" onclick="if(event.target===this)closeHelp()">
+  <div class="modal" style="width:560px;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0" id="helpTitle">📖 How to Use This Tool</h3>
+      <button onclick="closeHelp()" style="color:var(--text3);font-size:20px;line-height:1;border:none;background:none;cursor:pointer">✕</button>
+    </div>
+    <div class="help-body">
+      <details class="help-section">
+        <summary>Getting Started</summary>
+        <p><strong>Roles:</strong></p>
+        <ul>
+          <li><strong>Admin</strong> — Full access: create, edit, delete documents, manage users, import/export, backup/restore.</li>
+          <li><strong>Editor</strong> — Can edit document content but cannot create/delete documents.</li>
+          <li><strong>Viewer</strong> — Read-only access.</li>
+        </ul>
+        <p>On the login screen, select your account and enter the password. The interface language can be switched between English and Traditional Chinese.</p>
+      </details>
+      <details class="help-section">
+        <summary>Creating &amp; Editing Documents</summary>
+        <p>Click <strong>"+ New"</strong> in the top bar (Admin only) to create a document.</p>
+        <p>Click the <strong>"+"</strong> button on the left side of any block, or type <strong>"/"</strong> in an empty text block to open the block menu.</p>
+        <p><strong>Block types:</strong> Text, Heading 1–4, Toggle Heading, Bulleted/Numbered List, To-do, Image, Code, Quote, Callout, Divider.</p>
+        <p>Hover over a block to see the drag handle — drag to reorder.</p>
+      </details>
+      <details class="help-section">
+        <summary>Importing from Notion</summary>
+        <ol>
+          <li>In Notion, click "..." → Export → Markdown &amp; CSV → Export.</li>
+          <li>Click <strong>"Import Notion"</strong> in the top bar and select the .zip file, or drag &amp; drop it onto the editor.</li>
+        </ol>
+        <p>Toggle/collapse blocks are automatically detected and converted.</p>
+      </details>
+      <details class="help-section">
+        <summary>Backup &amp; Restore</summary>
+        <p><strong>Backup:</strong> Click "Backup" to download a JSON file of all documents.</p>
+        <p><strong>Restore:</strong> Click "Restore" and select a backup JSON file. This replaces all current documents.</p>
+        <p style="color:#92400e">⚠️ Restore overwrites everything — backup first!</p>
+      </details>
+      <details class="help-section">
+        <summary>Tips &amp; Shortcuts</summary>
+        <ul>
+          <li><strong>Ctrl+K</strong> — Search across all documents.</li>
+          <li><strong>Outline sidebar</strong> — Shows headings for quick navigation.</li>
+          <li><strong>Cover images</strong> — Hover at the top of a document to add a cover.</li>
+          <li><strong>Inline formatting</strong> — Select text for bold, italic, strikethrough, code, link.</li>
+          <li><strong>Real-time sync</strong> — Changes auto-save to Firebase.</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+</div>
+
 <!-- single global file input for all image uploads -->
 <input type="file" id="imgInput" accept="image/*" style="position:fixed;left:-9999px;opacity:0;pointer-events:none" multiple>
 
@@ -760,6 +825,7 @@ const I18N = {
     addItem:'+ 新增項目', addBlock:'+ 新增區塊',
     imgUpload:'點擊上傳圖片', imgFmt:'JPG、PNG、GIF、WEBP',
     imgCap:'圖片說明...', imgChange:'更換圖片',
+    helpBtn:'❓ 說明', helpTitle:'📖 使用說明',
     backupBtn:'💾 備份', restoreBtn:'📂 還原',
     dropText:'拖放 Notion 檔案至此', dropSub:'支援 .zip 或 .md 檔案',
     backupConfirm:'已匯出備份檔案。', restoreConfirm:'確定要還原？這會覆蓋所有現有文件。',
@@ -817,6 +883,7 @@ const I18N = {
     addItem:'+ Add item', addBlock:'+ Add block',
     imgUpload:'Click to upload', imgFmt:'JPG, PNG, GIF, WEBP',
     imgCap:'Caption...', imgChange:'Change image',
+    helpBtn:'❓ Help', helpTitle:'📖 How to Use This Tool',
     backupBtn:'💾 Backup', restoreBtn:'📂 Restore',
     dropText:'Drop Notion file here', dropSub:'.zip or .md files supported',
     backupConfirm:'Backup file exported.', restoreConfirm:'Are you sure you want to restore? This will overwrite all existing documents.',
@@ -941,6 +1008,9 @@ function applyLang() {
   setText('stClose', T.closeBtn);
   // trash button
   setText('btnTrash', lang==='en'?'🗑 Trash':'🗑 垃圾桶');
+  // help button
+  setText('btnHelp', T.helpBtn);
+  setText('helpTitle', T.helpTitle);
   // backup/restore buttons
   setText('btnBackup', T.backupBtn);
   setText('btnRestore', T.restoreBtn);
@@ -1105,6 +1175,7 @@ function renderTabs() {
   const wrap = document.getElementById('tabsWrap');
   wrap.innerHTML = '';
   docs.forEach(d => {
+    if (!d || !d.name) return;
     const el = document.createElement('div');
     el.className = 'doc-tab' + (d.id===activeId?' active':'');
     let thumb = '';
@@ -3179,7 +3250,10 @@ function closeSettings(){document.getElementById('settingsModal').classList.remo
 // ═══════════════════════════════════════════════════════════
 
 // Firebase 將陣列存為 object，讀回時需轉換
-function toArr(v){ return Array.isArray(v)?v:(v&&typeof v==='object'?Object.values(v):null); }
+function toArr(v){
+  const a = Array.isArray(v)?v:(v&&typeof v==='object'?Object.values(v):null);
+  return a ? a.filter(x => x != null) : null;
+}
 
 function setSaveBtnState(state) {
   // state: 'saving' | 'done' | 'idle'
@@ -3398,77 +3472,13 @@ document.addEventListener('click',e=>{
 });
 
 // ═══════════════════════════════════════════════════════════
-// TUTORIAL DOC
+// HELP MODAL
 // ═══════════════════════════════════════════════════════════
-function ensureTutorialDoc() {
-  const TUTORIAL_NAME = '\u{1F4D6} How to Use This Tool';
-  if (docs.some(d => d.name === TUTORIAL_NAME)) return;
-  const s = Date.now() + 900000;
-  let id = s;
-  const nid = () => id++;
-  const tutorialDoc = {
-    id: s,
-    name: TUTORIAL_NAME,
-    blocks: [
-      { id: nid(), type: 'h1', content: 'How to Use This Tool' },
-      { id: nid(), type: 'text', content: 'Welcome! This is a Notion-like SOP document editor with real-time collaboration via Firebase. Below you will find everything you need to get started.' },
-      { id: nid(), type: 'divider' },
-      { id: nid(), type: 'collapse', label: 'Getting Started', open: false, hl: 'h1', children: [
-        { id: nid(), type: 'h3', content: 'Roles' },
-        { id: nid(), type: 'bullet', content: '<strong>Admin</strong> — Full access: create, edit, delete documents, manage users, import/export, backup/restore.' },
-        { id: nid(), type: 'bullet', content: '<strong>Editor</strong> — Can edit document content but cannot create/delete documents or manage users.' },
-        { id: nid(), type: 'bullet', content: '<strong>Viewer</strong> — Read-only access. Cannot make any changes.' },
-        { id: nid(), type: 'h3', content: 'Logging In' },
-        { id: nid(), type: 'text', content: 'On the login screen, select your account and enter the password. The interface language can be switched between English and Traditional Chinese.' },
-      ]},
-      { id: nid(), type: 'collapse', label: 'Creating & Editing Documents', open: false, hl: 'h1', children: [
-        { id: nid(), type: 'h3', content: 'Creating a New Document' },
-        { id: nid(), type: 'text', content: 'Click the "+ New" button in the top bar (Admin only). Enter a name and click Create.' },
-        { id: nid(), type: 'h3', content: 'Adding Blocks' },
-        { id: nid(), type: 'text', content: 'Click the "+" button that appears on the left side of any block, or type "/" in an empty text block to open the block menu.' },
-        { id: nid(), type: 'h3', content: 'Available Block Types' },
-        { id: nid(), type: 'bullet', content: '<strong>Text</strong> — Plain paragraph' },
-        { id: nid(), type: 'bullet', content: '<strong>Heading 1-4</strong> — Section headings of different sizes' },
-        { id: nid(), type: 'bullet', content: '<strong>Toggle Heading</strong> — Collapsible sections with nested content' },
-        { id: nid(), type: 'bullet', content: '<strong>Bulleted / Numbered List</strong> — Unordered and ordered lists' },
-        { id: nid(), type: 'bullet', content: '<strong>To-do List</strong> — Checkbox items' },
-        { id: nid(), type: 'bullet', content: '<strong>Image</strong> — Upload images (supports carousel and grid views)' },
-        { id: nid(), type: 'bullet', content: '<strong>Code, Quote, Callout, Divider</strong> — Special formatting blocks' },
-        { id: nid(), type: 'h3', content: 'Drag to Reorder' },
-        { id: nid(), type: 'text', content: 'Hover over any block to see the drag handle on the left. Drag it up or down to reorder blocks.' },
-      ]},
-      { id: nid(), type: 'collapse', label: 'Importing from Notion', open: false, hl: 'h1', children: [
-        { id: nid(), type: 'h3', content: 'How to Export from Notion' },
-        { id: nid(), type: 'ordered', items: [
-          'In Notion, click the "..." menu at the top-right of a page.',
-          'Select "Export" and choose "Markdown & CSV" format.',
-          'Check "Include subpages" if needed, then click Export.',
-          'A .zip file will be downloaded.'
-        ]},
-        { id: nid(), type: 'h3', content: 'How to Import' },
-        { id: nid(), type: 'text', content: 'You have two options:' },
-        { id: nid(), type: 'bullet', content: '<strong>Button:</strong> Click the "Import Notion" button in the top bar and select your .zip or .md file.' },
-        { id: nid(), type: 'bullet', content: '<strong>Drag & Drop:</strong> Simply drag a .zip or .md file onto the editor area. A blue overlay will appear to confirm.' },
-        { id: nid(), type: 'text', content: 'Toggle/collapse blocks from Notion (bullet + indented content) are automatically detected and converted.' },
-      ]},
-      { id: nid(), type: 'collapse', label: 'Backup & Restore', open: false, hl: 'h1', children: [
-        { id: nid(), type: 'h3', content: 'Backup' },
-        { id: nid(), type: 'text', content: 'Click the "Backup" button in the top bar (Admin only). This downloads a JSON file containing all your documents. Keep this file safe.' },
-        { id: nid(), type: 'h3', content: 'Restore' },
-        { id: nid(), type: 'text', content: 'Click the "Restore" button and select a previously exported JSON backup file. This will replace all current documents with the backup data. You will be asked to confirm before proceeding.' },
-        { id: nid(), type: 'callout', content: '⚠️ Restore overwrites all existing documents. Make sure to backup first if you have unsaved changes.', bg: 'yellow' },
-      ]},
-      { id: nid(), type: 'collapse', label: 'Tips & Shortcuts', open: false, hl: 'h1', children: [
-        { id: nid(), type: 'bullet', content: '<strong>Ctrl+K</strong> — Open the search dialog to quickly find content across all documents.' },
-        { id: nid(), type: 'bullet', content: '<strong>Outline sidebar</strong> — The left panel shows all headings for quick navigation.' },
-        { id: nid(), type: 'bullet', content: '<strong>Cover images</strong> — Hover at the top of a document to add a cover image or emoji.' },
-        { id: nid(), type: 'bullet', content: '<strong>Inline formatting</strong> — Select text to see the formatting toolbar (bold, italic, strikethrough, code, link).' },
-        { id: nid(), type: 'bullet', content: '<strong>Real-time sync</strong> — Changes are automatically saved and synced to Firebase for all users.' },
-      ]},
-    ]
-  };
-  docs.push(tutorialDoc);
-  persistDocs();
+function openHelp() {
+  document.getElementById('helpModal').classList.add('show');
+}
+function closeHelp() {
+  document.getElementById('helpModal').classList.remove('show');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3488,7 +3498,7 @@ function init(){
       const fa = toArr(docsSnap.val()); if(fa&&fa.length) docs = fa;
       const ca = toArr(clSnap.val());  if(ca&&ca.length) changelog = ca;
       const ta = toArr(trashSnap.val()); if(ta&&ta.length) trash = ta;
-      ensureTutorialDoc();
+
       renderLogin();
 
       // 即時監聽其他人的變更
@@ -3508,14 +3518,13 @@ function init(){
       try{const s=localStorage.getItem('sop_docs');if(s)docs=JSON.parse(s);}catch(e){}
       try{const c=localStorage.getItem('sop_changelog');if(c)changelog=JSON.parse(c);}catch(e){}
       try{const t=localStorage.getItem('sop_trash');if(t)trash=JSON.parse(t);}catch(e){}
-      ensureTutorialDoc();
+
       renderLogin();
     });
   } else {
     try{const s=localStorage.getItem('sop_docs');if(s)docs=JSON.parse(s);}catch(e){}
     try{const c=localStorage.getItem('sop_changelog');if(c)changelog=JSON.parse(c);}catch(e){}
     try{const t=localStorage.getItem('sop_trash');if(t)trash=JSON.parse(t);}catch(e){}
-    ensureTutorialDoc();
     renderLogin();
   }
 }
