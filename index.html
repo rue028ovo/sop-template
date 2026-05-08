@@ -795,7 +795,7 @@ const I18N = {
     addItem:'+ 新增項目', addBlock:'+ 新增區塊',
     imgUpload:'點擊上傳圖片', imgFmt:'JPG、PNG、GIF、WEBP',
     imgCap:'圖片說明...', imgChange:'更換圖片',
-    helpBtn:'❓ 說明', helpTitle:'📖 使用說明',
+    helpBtn:'❓ 說明',
     backupBtn:'💾 備份', restoreBtn:'📂 還原',
     dropText:'拖放 Notion 檔案至此', dropSub:'支援 .zip 或 .md 檔案',
     backupConfirm:'已匯出備份檔案。', restoreConfirm:'確定要還原？這會覆蓋所有現有文件。',
@@ -853,7 +853,7 @@ const I18N = {
     addItem:'+ Add item', addBlock:'+ Add block',
     imgUpload:'Click to upload', imgFmt:'JPG, PNG, GIF, WEBP',
     imgCap:'Caption...', imgChange:'Change image',
-    helpBtn:'❓ Help', helpTitle:'📖 How to Use This Tool',
+    helpBtn:'❓ Help',
     backupBtn:'💾 Backup', restoreBtn:'📂 Restore',
     dropText:'Drop Notion file here', dropSub:'.zip or .md files supported',
     backupConfirm:'Backup file exported.', restoreConfirm:'Are you sure you want to restore? This will overwrite all existing documents.',
@@ -982,8 +982,7 @@ function applyLang() {
   setText('btnBackupLabel', lang==='en'?'Backup':'備份');
   setText('btnRestoreLabel', lang==='en'?'Restore':'還原');
   setText('btnChangelogLabel', lang==='en'?'Changelog':'更新日誌');
-  // help
-  setText('helpTitle', T.helpTitle);
+  // help button (icon only, no label to set)
   // drop overlay
   setText('dropText', T.dropText);
   setText('dropSub', T.dropSub);
@@ -3448,20 +3447,12 @@ document.addEventListener('click',e=>{
 // HELP MODAL
 // ═══════════════════════════════════════════════════════════
 function openHelp() {
-  const en = lang === 'en';
-  document.getElementById('helpTitle').textContent = en ? '📖 How to Use This Tool' : '📖 使用說明';
-  const sections = en ? [
+  const sections = [
     { t:'Getting Started', c:`<p><b>Roles:</b></p><ul><li><b>Admin</b> — Full access: create, edit, delete documents, manage users, import/export, backup/restore.</li><li><b>Editor</b> — Can edit content but cannot create/delete documents.</li><li><b>Viewer</b> — Read-only access.</li></ul><p>On the login screen, select your account and enter the password.</p>` },
     { t:'Creating & Editing Documents', c:`<p>Click <b>"+ New"</b> in the top bar (Admin only) to create a document.</p><p>Click <b>"+"</b> on the left of any block, or type <b>"/"</b> in an empty text block to open the block menu.</p><p><b>Block types:</b> Text, Heading 1–4, Toggle Heading, Bulleted/Numbered List, To-do, Image, Code, Quote, Callout, Divider.</p><p>Hover over a block to see the drag handle — drag to reorder.</p>` },
     { t:'Importing from Notion', c:`<ol><li>In Notion, click "..." → Export → Markdown & CSV → Export.</li><li>Click <b>"⋯" → "Import Notion"</b> and select the .zip file, or drag & drop it onto the editor.</li></ol><p>Toggle/collapse blocks are automatically detected and converted.</p>` },
     { t:'Backup & Restore', c:`<p><b>Backup:</b> Click "⋯" → "Backup" to download a JSON file of all documents.</p><p><b>Restore:</b> Click "⋯" → "Restore" and select a backup JSON file. This replaces all current documents.</p><p style="color:#92400e">⚠️ Restore overwrites everything — backup first!</p>` },
     { t:'Tips & Shortcuts', c:`<ul><li><b>Ctrl+K</b> — Search across all documents.</li><li><b>Outline sidebar</b> — Shows headings for quick navigation.</li><li><b>Cover images</b> — Hover at the top of a document to add a cover.</li><li><b>Inline formatting</b> — Select text for bold, italic, strikethrough, code, link.</li><li><b>Real-time sync</b> — Changes auto-save to Firebase.</li></ul>` },
-  ] : [
-    { t:'開始使用', c:`<p><b>角色說明：</b></p><ul><li><b>管理員 (Admin)</b> — 完整權限：建立、編輯、刪除文件、管理使用者、匯入/匯出、備份/還原。</li><li><b>編輯者 (Editor)</b> — 可編輯內容，但無法建立或刪除文件。</li><li><b>檢視者 (Viewer)</b> — 僅能檢視，無法做任何修改。</li></ul><p>在登入畫面選擇帳號並輸入密碼即可。介面語言可切換中文／英文。</p>` },
-    { t:'建立與編輯文件', c:`<p>點擊頂部工具列的 <b>「+ 新增」</b>（僅管理員）建立文件。</p><p>點擊區塊左側的 <b>「+」</b> 按鈕，或在空白文字區塊中輸入 <b>「/」</b> 開啟區塊選單。</p><p><b>區塊類型：</b>文字、標題 1–4、折疊標題、項目/編號清單、待辦事項、圖片、程式碼、引用、標注、分隔線。</p><p>將游標移到區塊上方會出現拖曳把手，可拖動重新排序。</p>` },
-    { t:'從 Notion 匯入', c:`<ol><li>在 Notion 中點選「...」→ 匯出 → Markdown & CSV → 匯出。</li><li>點擊 <b>「⋯」→「匯入 Notion」</b> 選擇 .zip 檔案，或直接拖放到編輯區域。</li></ol><p>折疊/展開區塊會自動偵測並轉換。</p>` },
-    { t:'備份與還原', c:`<p><b>備份：</b>點擊「⋯」→「備份」下載包含所有文件的 JSON 檔案。</p><p><b>還原：</b>點擊「⋯」→「還原」選擇先前匯出的 JSON 備份檔。這會取代所有現有文件。</p><p style="color:#92400e">⚠️ 還原會覆蓋所有內容，請先備份！</p>` },
-    { t:'快捷鍵與技巧', c:`<ul><li><b>Ctrl+K</b> — 搜尋所有文件。</li><li><b>大綱側欄</b> — 顯示標題方便快速跳轉。</li><li><b>封面圖片</b> — 將游標移到文件頂端即可新增封面。</li><li><b>行內格式</b> — 選取文字可使用粗體、斜體、刪除線、程式碼、連結。</li><li><b>即時同步</b> — 修改會自動儲存並同步到 Firebase。</li></ul>` },
   ];
   document.getElementById('helpBody').innerHTML = sections.map(s =>
     `<details class="help-section"><summary>${s.t}</summary><div>${s.c}</div></details>`
