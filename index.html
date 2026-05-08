@@ -2384,12 +2384,12 @@ function fmt(cmd){document.execCommand(cmd,false,null);document.getElementById('
 // ═══════════════════════════════════════════════════════════
 function renderOutline(){
   const doc=getDoc(); const body=document.getElementById('outlineBody'); body.innerHTML='';
-  const heads=doc.blocks.filter(b=>['h1','h2','h3','h4'].includes(b.type));
+  const heads=doc.blocks.filter(b=>['h1','h2','h3','h4'].includes(b.type)||(b.type==='collapse'&&b.hl));
   if(!heads.length){body.innerHTML=`<div style="font-size:12px;color:var(--text3);padding:4px 8px">${L().noHeadings}</div>`;return;}
   heads.forEach(b=>{
     const el=document.createElement('div');
-    el.className='ob-item ob-'+b.type;
-    el.textContent=b.content.replace(/<[^>]+>/g,'')||'…';
+    el.className='ob-item ob-'+(b.hl||b.type);
+    el.textContent=(b.content||b.label||'').replace(/<[^>]+>/g,'')||'…';
     el.onclick=()=>{const blk=document.getElementById('blk-'+b.id);if(blk)blk.scrollIntoView({behavior:'smooth',block:'start'});};
     body.appendChild(el);
   });
