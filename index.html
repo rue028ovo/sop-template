@@ -1257,11 +1257,30 @@ function closeTab(e, id) {
   showUndoToast(deletedDoc.name, id);
 }
 
-// Save a single doc to Firebase by its id
+// REST API fallback for writes exceeding Firebase Web SDK 16MB limit
+const FB_REST = 'https://sop-template-default-rtdb.asia-southeast1.firebasedatabase.app';
+function fbRestPut(path, data) {
+  return fetch(FB_REST + '/' + path + '.json', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+}
+function fbRestDelete(path) {
+  return fetch(FB_REST + '/' + path + '.json', { method: 'DELETE' });
+}
+
+// Save a single doc to Firebase by its id (with REST fallback for large docs)
 function saveSingleDoc(doc) {
-  if (!doc || !doc.id) return;
+  if (!doc || !doc.id) return Promise.resolve();
   try { localStorage.setItem('sop_docs', JSON.stringify(docs)); } catch(e) {}
-  if (window.fbDb) window.fbDb.ref('sop_docs/' + doc.id).set(doc).catch(() => {});
+  if (window.fbDb) {
+    return window.fbDb.ref('sop_docs/' + doc.id).set(doc).catch(() => {
+      // Fallback to REST API for large docs
+      return fbRestPut('sop_docs/' + doc.id, doc).catch(() => {});
+    });
+  }
+  return Promise.resolve();
 }
 
 // Remove a single doc from Firebase by its id
@@ -3366,7 +3385,9 @@ function save(action, detail){
     setText('stext',L().saved);
     document.getElementById('sdot').style.background='#22c55e';
     try{localStorage.setItem('sop_docs',JSON.stringify(docs));}catch(e){}
-    if(window.fbDb) window.fbDb.ref('sop_docs/' + doc.id).set(doc).catch(()=>{});
+    if(window.fbDb) window.fbDb.ref('sop_docs/' + doc.id).set(doc).catch(()=>{
+      fbRestPut('sop_docs/' + doc.id, doc).catch(()=>{});
+    });
     setSaveBtnState('done');
     showSaveToast();
   },800);
@@ -3387,7 +3408,9 @@ function forceSave(){
     setSaveBtnState('done');
     showSaveToast();
   };
-  if(window.fbDb) window.fbDb.ref('sop_docs/' + doc.id).set(doc).then(done).catch(done);
+  if(window.fbDb) window.fbDb.ref('sop_docs/' + doc.id).set(doc).then(done).catch(()=>{
+    fbRestPut('sop_docs/' + doc.id, doc).then(done).catch(done);
+  });
   else done();
 }
 function updateWordCount(){
@@ -3632,9 +3655,11 @@ function init(){
 
       // One-time migration: convert array to per-doc keyed format
       if (needsMigration && docs.length) {
-        // Write each doc individually to avoid 16MB limit
+        // Write each doc individually; use REST fallback for large docs
         const writes = docs.filter(d=>d&&d.id).map(d =>
-          window.fbDb.ref('sop_docs/' + d.id).set(d)
+          window.fbDb.ref('sop_docs/' + d.id).set(d).catch(() =>
+            fbRestPut('sop_docs/' + d.id, d)
+          )
         );
         Promise.all(writes).then(() => {
           // Remove old numeric-indexed entries (0, 1, 2, ...)
