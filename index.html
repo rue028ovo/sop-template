@@ -749,7 +749,7 @@ const I18N = {
   'zh-TW': {
     loginTitle:'📋 SOP Template', loginSub:'請選擇帳號登入', loginLangBtn:'English',
     addDoc:'+ 新增', searchHint:'搜尋…', usersBtn:'👥 使用者', logoutLabel:'登出',
-    changelogBtn:'📋 更新日誌', settingsBtn:'⚙ 設定', editingBtn:'✏️ 編輯中', viewBtn:'👁 檢視',
+    changelogBtn:'📋 更新日誌', settingsBtn:'⚙ 設定', editingBtn:'✏️ 編輯中', viewBtn:'👁 檢視', undoBtn:'↩ 復原', redoBtn:'↪ 取消復原',
     outlineLabel:'大綱', noHeadings:'（尚無標題）',
     saving:'儲存中...', saved:'已儲存 ✓', words: n=>n+' 字',
     lockMsg:'您的帳號為「僅檢視」模式，無法編輯。',
@@ -807,7 +807,7 @@ const I18N = {
   'en': {
     loginTitle:'📋 SOP Template', loginSub:'Select your account', loginLangBtn:'繁中',
     addDoc:'+ New', searchHint:'Search…', usersBtn:'👥 Users', logoutLabel:'Sign out',
-    changelogBtn:'📋 Changelog', settingsBtn:'⚙ Settings', editingBtn:'✏️ Editing', viewBtn:'👁 View',
+    changelogBtn:'📋 Changelog', settingsBtn:'⚙ Settings', editingBtn:'✏️ Editing', viewBtn:'👁 View', undoBtn:'↩ Undo', redoBtn:'↪ Redo',
     outlineLabel:'Outline', noHeadings:'(No headings)',
     saving:'Saving...', saved:'Saved ✓', words: n=>n+' chars',
     lockMsg:'View only access. Contact admin to edit.',
@@ -1134,8 +1134,8 @@ function updateAccess() {
   const saveBtn = document.getElementById('btnSave');
   if (saveBtn) saveBtn.style.display = canEdit() ? '' : 'none';
   const undoBtn = document.getElementById('btnUndo'), redoBtn = document.getElementById('btnRedo');
-  if (undoBtn) undoBtn.style.display = (edit && editMode) ? '' : 'none';
-  if (redoBtn) redoBtn.style.display = (edit && editMode) ? '' : 'none';
+  if (undoBtn) { undoBtn.style.display = (edit && editMode) ? '' : 'none'; undoBtn.textContent = T.undoBtn; undoBtn.title = T.undoBtn + ' (Ctrl+Z)'; }
+  if (redoBtn) { redoBtn.style.display = (edit && editMode) ? '' : 'none'; redoBtn.textContent = T.redoBtn; redoBtn.title = T.redoBtn + ' (Ctrl+Y)'; }
   updateUndoRedoBtns();
 }
 
