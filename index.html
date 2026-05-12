@@ -1250,19 +1250,33 @@ function closeTab(e, id) {
   docs = docs.filter(d=>d.id!==id);
   if (activeId===id) activeId=docs[0].id;
   renderTabs(); renderDoc();
-  // Immediately persist BOTH the updated docs AND trash to Firebase/localStorage
-  persistDocs();
+  removeSingleDoc(id);
   saveTrash();
   autoLog('deleteDoc', deletedDoc.name);
   // Show undo toast
   showUndoToast(deletedDoc.name, id);
 }
 
-// Immediately write docs to storage (no debounce) — used when doc list changes
+// Save a single doc to Firebase by its id
+function saveSingleDoc(doc) {
+  if (!doc || !doc.id) return;
+  try { localStorage.setItem('sop_docs', JSON.stringify(docs)); } catch(e) {}
+  if (window.fbDb) window.fbDb.ref('sop_docs/' + doc.id).set(doc).catch(() => {});
+}
+
+// Remove a single doc from Firebase by its id
+function removeSingleDoc(docId) {
+  try { localStorage.setItem('sop_docs', JSON.stringify(docs)); } catch(e) {}
+  if (window.fbDb) window.fbDb.ref('sop_docs/' + docId).remove().catch(() => {});
+}
+
+// Save all docs individually (used for bulk operations like restore)
 function persistDocs() {
   if (!docs || !docs.length) return;
   try { localStorage.setItem('sop_docs', JSON.stringify(docs)); } catch(e) {}
-  if (window.fbDb) window.fbDb.ref('sop_docs').set(docs).catch(() => {});
+  if (window.fbDb) {
+    docs.forEach(d => { if (d && d.id) saveSingleDoc(d); });
+  }
 }
 
 function newDoc() {
@@ -1277,11 +1291,12 @@ function confirmNewDoc() {
   const T=L();
   const name = document.getElementById('ndName').value.trim() || (lang==='en'?'New Document':'新文件');
   const id = Date.now();
-  docs.push({id, name, blocks:[{id:id+1,type:'h1',content:name},{id:id+2,type:'text',content:''}]});
+  const newDoc = {id, name, blocks:[{id:id+1,type:'h1',content:name},{id:id+2,type:'text',content:''}]};
+  docs.push(newDoc);
   document.getElementById('newDocModal').classList.remove('show');
   if (!editMode && canEdit()) { editMode=true; updateAccess(); }
   switchDoc(id);
-  persistDocs();
+  saveSingleDoc(newDoc);
   autoLog('addDoc', name);
   setTimeout(()=>{ const t=document.getElementById('docTitle'); if(t){t.focus();t.select();} },100);
 }
@@ -2812,8 +2827,7 @@ function restoreDoc(idx) {
   docs.push(doc);
   trash.splice(idx, 1);
   activeId = doc.id;
-  // Immediately persist both docs and trash
-  persistDocs();
+  saveSingleDoc(doc);
   saveTrash();
   autoLog('addDoc', doc.name);
   renderTabs(); renderDoc();
@@ -3056,20 +3070,24 @@ function confirmImport() {
 
   // 匯入第一份（已命名）
   const id = Date.now();
-  docs.push({ id, name, blocks });
+  const firstDoc = { id, name, blocks };
+  docs.push(firstDoc);
   activeId = id;
+  const newDocs = [firstDoc];
 
   // 若 ZIP 內有多份 .md，一起匯入（使用原始名稱）
   const queue = window._pendingImportQueue || [];
   queue.slice(1).forEach((item, idx) => {
-    docs.push({ id: id + idx + 1, name: item.name, blocks: item.blocks });
+    const d = { id: id + idx + 1, name: item.name, blocks: item.blocks };
+    docs.push(d);
+    newDocs.push(d);
   });
   window._pendingImportQueue = null;
   window._pendingImportBlocks = null;
 
   closeImportModal();
   renderTabs(); renderDoc();
-  persistDocs();
+  newDocs.forEach(d => saveSingleDoc(d));
   autoLog('addDoc', name);
 }
 
@@ -3336,8 +3354,10 @@ function setSaveBtnState(state) {
 }
 
 function save(action, detail){
-  if(!docs||!docs.length) return; // 防止意外覆蓋空資料
-  if (action && action !== 'edit') autoLog(action, getDoc().name, detail||'');
+  if(!docs||!docs.length) return;
+  const doc = getDoc();
+  if (!doc) return;
+  if (action && action !== 'edit') autoLog(action, doc.name, detail||'');
   setText('stext',L().saving);
   document.getElementById('sdot').style.background='#f59e0b';
   setSaveBtnState('saving');
@@ -3346,7 +3366,7 @@ function save(action, detail){
     setText('stext',L().saved);
     document.getElementById('sdot').style.background='#22c55e';
     try{localStorage.setItem('sop_docs',JSON.stringify(docs));}catch(e){}
-    if(window.fbDb) window.fbDb.ref('sop_docs').set(docs).catch(()=>{});
+    if(window.fbDb) window.fbDb.ref('sop_docs/' + doc.id).set(doc).catch(()=>{});
     setSaveBtnState('done');
     showSaveToast();
   },800);
@@ -3354,6 +3374,8 @@ function save(action, detail){
 
 function forceSave(){
   if(!docs||!docs.length) return;
+  const doc = getDoc();
+  if (!doc) return;
   clearTimeout(saveTimer);
   setText('stext',L().saving);
   document.getElementById('sdot').style.background='#f59e0b';
@@ -3365,7 +3387,7 @@ function forceSave(){
     setSaveBtnState('done');
     showSaveToast();
   };
-  if(window.fbDb) window.fbDb.ref('sop_docs').set(docs).then(done).catch(done);
+  if(window.fbDb) window.fbDb.ref('sop_docs/' + doc.id).set(doc).then(done).catch(done);
   else done();
 }
 function updateWordCount(){
@@ -3413,7 +3435,13 @@ function restoreDocs(input) {
       if (!confirm(L().restoreConfirm)) return;
       docs = data;
       activeId = docs[0].id;
-      persistDocs();
+      // Clear old data, then write each restored doc individually
+      try { localStorage.setItem('sop_docs', JSON.stringify(docs)); } catch(e) {}
+      if (window.fbDb) {
+        window.fbDb.ref('sop_docs').remove().then(() => {
+          docs.forEach(d => { if (d && d.id) window.fbDb.ref('sop_docs/' + d.id).set(d).catch(()=>{}); });
+        }).catch(() => {});
+      }
       renderTabs();
       renderDoc();
       alert(L().restoreDone);
@@ -3580,18 +3608,68 @@ function init(){
       window.fbDb.ref('sop_changelog').once('value'),
       window.fbDb.ref('sop_trash').once('value')
     ]).then(([docsSnap, clSnap, trashSnap])=>{
-      const fa = toArr(docsSnap.val()); if(fa&&fa.length) docs = fa;
+      // sop_docs: supports both old array format and new object-keyed format
+      const raw = docsSnap.val();
+      let needsMigration = false;
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        // Check if it's already migrated (keys are doc ids) or still array-like (numeric keys)
+        const keys = Object.keys(raw);
+        const hasNumericKeys = keys.length > 0 && keys.every(k => /^\d+$/.test(k) && Number(k) < 1000);
+        if (hasNumericKeys) {
+          // Old array stored as sparse object with small numeric indices
+          const arr = Object.values(raw).filter(x => x && x.id && x.name);
+          if (arr.length) { docs = arr; needsMigration = true; }
+        } else {
+          const arr = Object.values(raw).filter(x => x && x.id && x.name);
+          if (arr.length) docs = arr;
+        }
+      } else if (Array.isArray(raw)) {
+        const fa = raw.filter(x => x != null && x.id && x.name);
+        if (fa.length) { docs = fa; needsMigration = true; }
+      }
       const ca = toArr(clSnap.val());  if(ca&&ca.length) changelog = ca;
       const ta = toArr(trashSnap.val()); if(ta&&ta.length) trash = ta;
 
+      // One-time migration: convert array to per-doc keyed format
+      if (needsMigration && docs.length) {
+        // Write each doc individually to avoid 16MB limit
+        const writes = docs.filter(d=>d&&d.id).map(d =>
+          window.fbDb.ref('sop_docs/' + d.id).set(d)
+        );
+        Promise.all(writes).then(() => {
+          // Remove old numeric-indexed entries (0, 1, 2, ...)
+          return window.fbDb.ref('sop_docs').once('value');
+        }).then(snap => {
+          const val = snap.val();
+          if (!val) return;
+          const removes = {};
+          Object.keys(val).forEach(k => {
+            if (/^\d+$/.test(k) && Number(k) < 1000) removes[k] = null;
+          });
+          if (Object.keys(removes).length) {
+            return window.fbDb.ref('sop_docs').update(removes);
+          }
+        }).then(() => {
+          console.log('Migrated sop_docs to per-doc format:', docs.length, 'docs');
+        }).catch(e => console.warn('Migration issue:', e));
+      }
+
       renderLogin();
 
-      // 即時監聽其他人的變更
+      // 即時監聽其他人的變更 — per-doc sync
       let skip = true;
       window.fbDb.ref('sop_docs').on('value', snap=>{
         if(skip){ skip=false; return; }
-        const a = toArr(snap.val()); if(!a||!a.length) return;
-        docs = a; renderTabs(); renderDoc();
+        const val = snap.val();
+        if (!val) return;
+        let arr;
+        if (typeof val === 'object' && !Array.isArray(val)) {
+          arr = Object.values(val).filter(x => x && x.id && x.name);
+        } else {
+          arr = toArr(val);
+        }
+        if(!arr||!arr.length) return;
+        docs = arr; renderTabs(); renderDoc();
       });
       window.fbDb.ref('sop_changelog').on('value', snap=>{
         const c = toArr(snap.val()); if(c&&c.length) changelog = c;
